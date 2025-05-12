@@ -1,0 +1,157 @@
+.App {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.container {
+  justify-content: left;
+  flex-direction: column;
+  margin: 40px;
+  max-width: 1400px;
+  width: 80%;
+}
+
+.appBar header {
+  border-radius: 12px;
+
+}
+
+.logo {
+  text-decoration: none;
+  color: inherit;
+  flex-direction: row;
+  display: flex;
+  align-items: center;
+}
+
+.navCol {
+  display: flex;
+  flex-direction: row;
+}
+
+header>div {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.panel {
+  border: 1px solid var(--primary-color);
+  height: 100%;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  margin: 24px 0;
+}
+
+.panel-heading {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+
+.panel-footer {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.link {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+a {
+  color: var(--primary-color);
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+a:hover .icon {
+  margin-right: 16px;
+  transition: margin-right 0.3s ease;
+
+  /* Add margin-right on hover */
+}
+
+.icon {
+  transition: margin-right 0.3s ease;
+
+  /* Add margin-right on hover */
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.break-2 {
+  width: 100%;
+  align-items: flex-start;
+}
+
+.break-2>div {
+  width: inherit;
+}
+
+@media (max-width: 768px) {
+
+  .break-2 {
+    flex-wrap: wrap;
+  }
+
+  .break-2> {
+    flex: 1 1 100%;
+    /* Each child takes 100% width on smaller screens */
+    max-width: 100%;
+    /* Ensures max width is 100% */
+  }
+
+  .panel-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.sigCanvas {
+  display: block;
+  width: 100%;
+  /* Ensure it scales properly */
+  max-width: 500px;
+  /* Optional: Limit the max width */
+  height: 200px;
+  border: 1px solid #ccc;
+  /* Add a border for visibility */
+  border-radius: 4px;
+  box-sizing: border-box;
+  /* Include padding and borders in the size */
+}
+
+.primary {
+  border-color: var(--primary-color);
+}
+
+.secondary {
+  border-color: var(--secondary-color);
+
+}
+
+.divider {
+  width: 100%;
+  margin: 24px 0;
+  border-style: solid;
+}
