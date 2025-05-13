@@ -16,7 +16,8 @@ import {
 import { useSnackbar } from "notistack";
 import axios from "axios";
 import SignatureCanvas from "react-signature-canvas";
-import jsPDF from "jspdf";
+
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 interface RefereeTribunalReportForm {
 	name: string;
@@ -59,6 +60,14 @@ const RefereeTribunalReport = () => {
 		}
 	};
 
+	const saveSignatureToFormData = () => {
+		if (sigCanvasRef.current) {
+			const signatureDataUrl = sigCanvasRef.current.toDataURL();
+			return signatureDataUrl;
+		}
+		return null;
+	};
+
 	const {
 		handleSubmit,
 		control,
@@ -88,34 +97,171 @@ const RefereeTribunalReport = () => {
 
 	const onSubmit = async (data: any) => {
 		try {
-			// Generate PDF
-			const doc = new jsPDF();
-			doc.text("Referee Tribunal Report", 10, 10);
-			doc.text(`Name: ${data.name}`, 10, 20);
-			doc.text(`Co-Official: ${data.coOfficial}`, 10, 30);
-			doc.text(
-				`Team 1: ${data.team1.text} (${data.team1.color})`,
-				10,
-				40
+			console.log("Form data:", data);
+			const signatureDataUrl = saveSignatureToFormData();
+			if (signatureDataUrl) {
+				data.signature = signatureDataUrl;
+			}
+
+			// Generate PDF using PDF-lib
+			const pdfDoc = await PDFDocument.create();
+			const page = pdfDoc.addPage([600, 800]);
+			const { width, height } = page.getSize();
+
+			const fontSizeTitle = 20;
+			const fontSizeSubtitle = 20;
+
+			const fontSizeText = 12;
+
+			const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+			const titleText = "BASKETBALL WA";
+			const subtitleText = "REPORT FORM";
+
+			const titleTextWidth = font.widthOfTextAtSize(
+				titleText,
+				fontSizeTitle
 			);
-			doc.text(
-				`Team 2: ${data.team2.text} (${data.team2.color})`,
-				10,
-				50
+			const subtitleTextWidth = font.widthOfTextAtSize(
+				subtitleText,
+				fontSizeSubtitle
 			);
-			doc.text(`Date: ${data.date}`, 10, 60);
-			doc.text(`Time: ${data.time}`, 10, 70);
-			doc.text(`Venue: ${data.venue}`, 10, 80);
-			doc.text(`Person on Report: ${data.personOnReport}`, 10, 90);
-			doc.text("Allegations:", 10, 100);
-			data.allegations.forEach((allegation: string, index: number) => {
-				doc.text(`- ${allegation}`, 15, 110 + index * 10);
+
+			const titleXPosition = (width - titleTextWidth) / 2;
+			const subtitleXPosition = (width - subtitleTextWidth) / 2;
+
+			page.drawText(titleText, {
+				x: titleXPosition,
+				y: height - 50,
+				size: fontSizeTitle,
+				font: font,
+				color: rgb(0, 0, 0),
 			});
-			doc.text("Summary of Facts:", 10, 130);
-			doc.text(data.summary, 10, 140, { maxWidth: 180 });
+
+			page.drawText(subtitleText, {
+				x: subtitleXPosition,
+				y: height - 80,
+				size: fontSizeSubtitle,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+
+			const reportData = [
+				{
+					label: "Name of person making report",
+					value: `${data.name}`,
+				},
+				{
+					label: "Name of Co-official",
+					value: `${data.coOfficial}`,
+				},
+				{
+					label: "Team names and colour",
+					value: `${data.team1.text} (${data.team1.color}) vs ${data.team2.text} (${data.team2.color})`,
+				},
+				{
+					label: "It is alleged that on",
+					value: `${data.date} at ${data.time}, venue ${data.venue}`,
+				},
+				{
+					label: "Name/number of person on report",
+					value: `${data.personOnReport}`,
+				},
+				{ label: "Allegations", value: "(Circle appropriate item(s))" },
+			];
+			let yPosition = height - 120;
+			reportData.forEach((item) => {
+				page.drawText(`${item.label}: ${item.value}`, {
+					x: 50,
+					y: yPosition,
+					size: fontSizeText,
+					font: font,
+					color: rgb(0, 0, 0),
+				});
+				yPosition -= 20;
+			});
+
+			data.allegations.forEach((allegation: string, index: number) => {
+				page.drawText(`- ${allegation}`, {
+					x: 60,
+					y: yPosition - index * 20,
+					size: fontSizeText,
+					font: font,
+					color: rgb(0, 0, 0),
+				});
+			});
+
+			// Adjust yPosition to avoid overlap and ensure proper spacing
+			yPosition -= 80; // Further increased spacing before summaryOfFactsLabel
+
+			const summaryOfFactsLabel = "Summary of the facts";
+			const summaryOfFactsValue = `${data.summary}`;
+
+			page.drawText(`${summaryOfFactsLabel}:`, {
+				x: 50,
+				y: yPosition,
+				size: fontSizeText,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+			yPosition -= 30; // Increased spacing after the label
+
+			page.drawText(summaryOfFactsValue, {
+				x: 50,
+				y: yPosition,
+				size: fontSizeText,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+			yPosition -= 20 * 10; // Ensure even more space after the summary
+
+			// Adjust yPosition to avoid overlap and ensure proper spacing
+			yPosition -= 40; // Increased spacing before personsNotifiedLabel
+
+			const personsNotifiedLabel =
+				"Persons notified/not notified of this report";
+			const checkboxValue = `${data.personsNotified ? "Yes" : "No"}`;
+
+			page.drawText(`${personsNotifiedLabel}: ${checkboxValue}`, {
+				x: 50,
+				y: yPosition,
+				size: fontSizeText,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+			yPosition -= 40; // Increased spacing before signatureLabel
+
+			const signatureLabel = "Signature of person making report";
+
+			page.drawText(`${signatureLabel}:`, {
+				x: 50,
+				y: yPosition,
+				size: fontSizeText,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+
+			yPosition -= 80; // Increased spacing before embedding signature image
+
+			if (signatureDataUrl) {
+				const signatureImageBytes = Uint8Array.from(
+					atob(signatureDataUrl.split(",")[1]),
+					(char) => char.charCodeAt(0)
+				);
+				const signatureImage = await pdfDoc.embedPng(
+					signatureImageBytes
+				);
+				page.drawImage(signatureImage, {
+					x: 50,
+					y: yPosition,
+					width: 200,
+					height: 100,
+				});
+			}
 
 			// Save PDF to a Blob
-			const pdfBlob = doc.output("blob");
+			const pdfBytes = await pdfDoc.save();
+			const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
 
 			// Create FormData to send the PDF to the API
 			const formData = new FormData();
@@ -136,24 +282,21 @@ const RefereeTribunalReport = () => {
 				console.log("Email sent successfully.");
 				enqueueSnackbar("Form submission successful", {
 					variant: "success",
-					autoHideDuration: null,
 					style: { right: "20px" },
 				}); // Show success snackbar
 			} else {
 				console.error("Failed to send email.", response.data);
 				enqueueSnackbar("Failed to submit form", {
 					variant: "warning",
-					autoHideDuration: 4000,
 				});
 			}
 
-			clearSignature();
-			reset();
+			// clearSignature();
+			// reset();
 		} catch (error) {
 			console.error("Error submitting form:", error);
 			enqueueSnackbar("Failed to submit form", {
 				variant: "warning",
-				autoHideDuration: null,
 				style: { float: "right" },
 			});
 		}
