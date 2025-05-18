@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reimbursement_forms",
+  "info": {
+    "singularName": "reimbursement-form",
+    "pluralName": "reimbursement-forms",
+    "displayName": "Reimbursement Form",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "player_name": {
+      "type": "string"
+    },
+    "club_name": {
+      "type": "string"
+    },
+    "team_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "account_name": {
+      "type": "string"
+    },
+    "bsb": {
+      "type": "biginteger"
+    },
+    "account_number": {
+      "type": "biginteger"
+    },
+    "date": {
+      "type": "date"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_number": {
+      "type": "biginteger"
+    },
+    "contact_email": {
+      "type": "email"
+    },
+    "signature": {
+      "type": "string"
+    }
+  }
+}

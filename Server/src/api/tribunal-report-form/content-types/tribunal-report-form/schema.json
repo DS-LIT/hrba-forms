@@ -1,0 +1,91 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tribunal_report_forms",
+  "info": {
+    "singularName": "tribunal-report-form",
+    "pluralName": "tribunal-report-forms",
+    "displayName": "Tribunal Report Form",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "co_official": {
+      "type": "string"
+    },
+    "team_1_name": {
+      "type": "string"
+    },
+    "team_1_colour": {
+      "type": "enumeration",
+      "enum": [
+        "Red",
+        "Blue",
+        "Green",
+        "Yellow",
+        "Orange",
+        "Purple",
+        "Pink",
+        "Brown",
+        "Black"
+      ]
+    },
+    "team_2_name": {
+      "type": "string"
+    },
+    "team_2_colour": {
+      "type": "enumeration",
+      "enum": [
+        "Red",
+        "Blue",
+        "Green",
+        "Yellow",
+        "Orange",
+        "Purple",
+        "Pink",
+        "Brown",
+        "Black"
+      ]
+    },
+    "date": {
+      "type": "date"
+    },
+    "time": {
+      "type": "time"
+    },
+    "venue": {
+      "type": "string"
+    },
+    "person_on_report": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "text"
+    },
+    "person_notified": {
+      "type": "boolean"
+    },
+    "signature": {
+      "type": "string"
+    },
+    "allegations": {
+      "type": "customField",
+      "default": "[]",
+      "options": [
+        "Disputed decisions of officials or breached code of conduct.",
+        "Used abusive, threatening, obscene language or gestures.",
+        "Acted in an unsportsmanlike manner in or around the stadium, including damage to property.",
+        "Attempted to trip, strike, push, elbow or kick player/official.",
+        "Tripped, punched, slapped, pushed, elbowed, kicked or spat at a player/official.",
+        "Participated in basketball activities whilst suspended.",
+        "Engaged in conduct likely to bring the game into disrepute.",
+        "Deliberately did an act endangering safety/health of players/spectators/officials."
+      ],
+      "customField": "plugin::multi-select.multi-select"
+    }
+  }
+}
