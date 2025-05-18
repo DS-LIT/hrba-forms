@@ -5,25 +5,14 @@ import {
     TextField,
     Button,
     Box,
-    MenuItem,
-    Select,
-    InputLabel,
-    FormControl,
-    FormGroup,
-    FormControlLabel,
-    Checkbox,
-    Alert,
     InputAdornment
 } from "@mui/material";
-
+import { useSnackbar } from "notistack";
+import axios from "axios";
 import Divider from "../../components/divider";
 
-import Snackbar, { SnackbarCloseReason, SnackbarOrigin } from '@mui/material/Snackbar';
 import SignatureCanvas from 'react-signature-canvas';
 
-interface State extends SnackbarOrigin {
-    open: boolean;
-}
 
 interface ReimbursementFormProps {
     playerName: string;
@@ -41,13 +30,8 @@ interface ReimbursementFormProps {
 const ReimbursementForm = () => {
 
     const navigate = useNavigate();
+    const { enqueueSnackbar } = useSnackbar();
     const sigCanvasRef = useRef<SignatureCanvas>(null);
-    const [state, setState] = React.useState<State>({
-        open: false,
-        vertical: 'top',
-        horizontal: 'center',
-    });
-    const { vertical, horizontal, open } = state;
 
     useEffect(() => {
         if (sigCanvasRef.current) {
@@ -59,20 +43,18 @@ const ReimbursementForm = () => {
         }
     }, []);
 
-    const handleClick = (newState: SnackbarOrigin) => () => {
-        setState({ ...newState, open: true });
-    };
-
-    const handleClose = () => {
-        setState({ ...state, open: false });
-    };
-
-
-
     const clearSignature = () => {
         if (sigCanvasRef.current) {
             sigCanvasRef.current.clear(); // Clear the canvas
         }
+    };
+
+    const saveSignatureToFormData = () => {
+        if (sigCanvasRef.current) {
+            const signatureDataUrl = sigCanvasRef.current.toDataURL();
+            return signatureDataUrl;
+        }
+        return null;
     };
 
     const { handleSubmit, control, reset, formState: { errors } } = useForm({
@@ -90,27 +72,68 @@ const ReimbursementForm = () => {
         },
     });
 
+    function toStrapiTimeFormat(time24: string): string {
+        if (!time24) return "";
+        return `${time24}:00.000`;
+    }
+
     const onSubmit = async (data: any) => {
+
         try {
             // Ensure an account is available
+            const signatureDataUrl = saveSignatureToFormData();
+            if (signatureDataUrl) {
+                data.signature = signatureDataUrl;
+            }
 
-            console.log("Form submitted successfully:", data);
-            handleClick({ vertical: 'bottom', horizontal: 'right' })(); // Show success snackbar
-            clearSignature();
-            reset();
+            // Transform data to match Strapi schema
+            const strapiData = {
+                player_name: data.playerName,
+                club_name: data.club,
+                team_name: data.team,
+                amount: data.amount,
+                reason: data.reason,
+                account_name: data.accountName,
+                bsb: data.bsb,
+                account_number: data.accountNumber,
+                signature: data.signature,
+                date: toStrapiTimeFormat(data.date),
+            };
+
+            const response = await axios.post(
+                "http://localhost:1337/api/reimbursement-forms", // Update this endpoint as needed
+                { data: strapiData },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            if (response.status === 200 || response.status === 201) {
+                console.log("Form data sent to Strapi successfully.");
+                enqueueSnackbar("Form submission successful", {
+                    variant: "success",
+                    style: { right: "20px" },
+                });
+            } else {
+                console.error("Failed to send data to Strapi.", response.data);
+                enqueueSnackbar("Failed to submit form", {
+                    variant: "warning",
+                });
+            }
+            handleReset();
         } catch (error) {
             console.error("Error submitting form:", error);
-            setState({
-                open: true,
-                vertical: 'bottom',
-                horizontal: 'right',
-            }); // Show error snackbar
+
         }
     };
 
     const handleReset = () => {
+        if (sigCanvasRef.current) {
+            sigCanvasRef.current.clear(); // Clear the signature canvas
+        }
         reset(); // Reset the form
-        clearSignature(); // Clear the signature canvas
     };
 
     return (
@@ -332,17 +355,7 @@ const ReimbursementForm = () => {
                     </Button>
                 </div>
             </form>
-            <Snackbar
-                anchorOrigin={{ vertical, horizontal }}
-                autoHideDuration={6000}
-                open={open}
-                onClose={handleClose}
-                key={vertical + horizontal}
-            >
-                <Alert onClose={handleClose} severity="success" sx={{ width: "100%" }}>
-                    Form submitted successfully!
-                </Alert>
-            </Snackbar>
+
         </div>
     );
 };

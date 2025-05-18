@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, set } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import {
 	TextField,
@@ -16,6 +16,8 @@ import {
 import { useSnackbar } from "notistack";
 import axios from "axios";
 import SignatureCanvas from "react-signature-canvas";
+
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 interface RefereeTribunalReportForm {
 	name: string;
@@ -93,65 +95,204 @@ const RefereeTribunalReport = () => {
 		},
 	});
 
-	// Helper to convert 24-hour time ("HH:mm") to "HH:mm:00.000" for Strapi
-	function toStrapiTimeFormat(time24: string): string {
-		if (!time24) return "";
-		return `${time24}:00.000`;
-	}
-
 	const onSubmit = async (data: any) => {
 		try {
+			console.log("Form data:", data);
 			const signatureDataUrl = saveSignatureToFormData();
 			if (signatureDataUrl) {
 				data.signature = signatureDataUrl;
 			}
 
-			// Transform data to match Strapi schema
-			const strapiData = {
-				name: data.name,
-				co_official: data.coOfficial,
-				team_1_name: data.team1.text,
-				team_1_colour:
-					data.team1.color.charAt(0).toUpperCase() +
-					data.team1.color.slice(1),
-				team_2_name: data.team2.text,
-				team_2_colour:
-					data.team2.color.charAt(0).toUpperCase() +
-					data.team2.color.slice(1),
-				date: data.date,
-				time: toStrapiTimeFormat(data.time),
-				venue: data.venue,
-				person_on_report: data.personOnReport,
-				summary: data.summary,
-				person_notified: data.personsNotified,
-				signature: data.signature,
-				allegations: data.allegations,
-			};
+			// Generate PDF using PDF-lib
+			const pdfDoc = await PDFDocument.create();
+			const page = pdfDoc.addPage([600, 800]);
+			const { width, height } = page.getSize();
 
-			// Send the form data as JSON to the Strapi dev server
+			const fontSizeTitle = 20;
+			const fontSizeSubtitle = 20;
+
+			const fontSizeText = 12;
+
+			const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+			const titleText = "BASKETBALL WA";
+			const subtitleText = "REPORT FORM";
+
+			const titleTextWidth = font.widthOfTextAtSize(
+				titleText,
+				fontSizeTitle
+			);
+			const subtitleTextWidth = font.widthOfTextAtSize(
+				subtitleText,
+				fontSizeSubtitle
+			);
+
+			const titleXPosition = (width - titleTextWidth) / 2;
+			const subtitleXPosition = (width - subtitleTextWidth) / 2;
+
+			page.drawText(titleText, {
+				x: titleXPosition,
+				y: height - 50,
+				size: fontSizeTitle,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+
+			page.drawText(subtitleText, {
+				x: subtitleXPosition,
+				y: height - 80,
+				size: fontSizeSubtitle,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+
+			const reportData = [
+				{
+					label: "Name of person making report",
+					value: `${data.name}`,
+				},
+				{
+					label: "Name of Co-official",
+					value: `${data.coOfficial}`,
+				},
+				{
+					label: "Team names and colour",
+					value: `${data.team1.text} (${data.team1.color}) vs ${data.team2.text} (${data.team2.color})`,
+				},
+				{
+					label: "It is alleged that on",
+					value: `${data.date} at ${data.time}, venue ${data.venue}`,
+				},
+				{
+					label: "Name/number of person on report",
+					value: `${data.personOnReport}`,
+				},
+				{ label: "Allegations", value: "(Circle appropriate item(s))" },
+			];
+			let yPosition = height - 120;
+			reportData.forEach((item) => {
+				page.drawText(`${item.label}: ${item.value}`, {
+					x: 50,
+					y: yPosition,
+					size: fontSizeText,
+					font: font,
+					color: rgb(0, 0, 0),
+				});
+				yPosition -= 20;
+			});
+
+			data.allegations.forEach((allegation: string, index: number) => {
+				page.drawText(`- ${allegation}`, {
+					x: 60,
+					y: yPosition - index * 20,
+					size: fontSizeText,
+					font: font,
+					color: rgb(0, 0, 0),
+				});
+			});
+
+			// Adjust yPosition to avoid overlap and ensure proper spacing
+			yPosition -= 80; // Further increased spacing before summaryOfFactsLabel
+
+			const summaryOfFactsLabel = "Summary of the facts";
+			const summaryOfFactsValue = `${data.summary}`;
+
+			page.drawText(`${summaryOfFactsLabel}:`, {
+				x: 50,
+				y: yPosition,
+				size: fontSizeText,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+			yPosition -= 30; // Increased spacing after the label
+
+			page.drawText(summaryOfFactsValue, {
+				x: 50,
+				y: yPosition,
+				size: fontSizeText,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+			yPosition -= 20 * 10; // Ensure even more space after the summary
+
+			// Adjust yPosition to avoid overlap and ensure proper spacing
+			yPosition -= 40; // Increased spacing before personsNotifiedLabel
+
+			const personsNotifiedLabel =
+				"Persons notified/not notified of this report";
+			const checkboxValue = `${data.personsNotified ? "Yes" : "No"}`;
+
+			page.drawText(`${personsNotifiedLabel}: ${checkboxValue}`, {
+				x: 50,
+				y: yPosition,
+				size: fontSizeText,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+			yPosition -= 40; // Increased spacing before signatureLabel
+
+			const signatureLabel = "Signature of person making report";
+
+			page.drawText(`${signatureLabel}:`, {
+				x: 50,
+				y: yPosition,
+				size: fontSizeText,
+				font: font,
+				color: rgb(0, 0, 0),
+			});
+
+			yPosition -= 80; // Increased spacing before embedding signature image
+
+			if (signatureDataUrl) {
+				const signatureImageBytes = Uint8Array.from(
+					atob(signatureDataUrl.split(",")[1]),
+					(char) => char.charCodeAt(0)
+				);
+				const signatureImage = await pdfDoc.embedPng(
+					signatureImageBytes
+				);
+				page.drawImage(signatureImage, {
+					x: 50,
+					y: yPosition,
+					width: 200,
+					height: 100,
+				});
+			}
+
+			// Save PDF to a Blob
+			const pdfBytes = await pdfDoc.save();
+			const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
+
+			// Create FormData to send the PDF to the API
+			const formData = new FormData();
+			formData.append("file", pdfBlob, "Referee_Tribunal_Report.pdf");
+
+			// Send the PDF to the API
 			const response = await axios.post(
-				"http://localhost:1337/api/tribunal-report-forms", // Update this endpoint as needed
-				{ data: strapiData },
+				"http://localhost:5000/api/send-email",
+				formData,
 				{
 					headers: {
-						"Content-Type": "application/json",
+						"Content-Type": "multipart/form-data",
 					},
 				}
 			);
 
-			if (response.status === 200 || response.status === 201) {
-				console.log("Form data sent to Strapi successfully.");
+			if (response.status === 200) {
+				console.log("Email sent successfully.");
 				enqueueSnackbar("Form submission successful", {
 					variant: "success",
 					style: { right: "20px" },
-				});
-				handleReset();
+				}); // Show success snackbar
 			} else {
-				console.error("Failed to send data to Strapi.", response.data);
+				console.error("Failed to send email.", response.data);
 				enqueueSnackbar("Failed to submit form", {
 					variant: "warning",
 				});
 			}
+
+			// clearSignature();
+			// reset();
 		} catch (error) {
 			console.error("Error submitting form:", error);
 			enqueueSnackbar("Failed to submit form", {
