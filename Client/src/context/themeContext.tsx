@@ -26,6 +26,8 @@ export const ThemeContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
         root.style.setProperty('--background-color', theme.palette.background.default);
         root.style.setProperty('--text-primary-color', theme.palette.text.primary);
         root.style.setProperty('--text-secondary-color', theme.palette.text.secondary);
+        // Add link color as CSS variable
+        root.style.setProperty('--link-color', theme.palette.link.main);
     }, [theme]);
 
     return (

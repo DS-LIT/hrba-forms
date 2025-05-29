@@ -58,13 +58,17 @@ export default factories.createCoreController('api::tribunal-report-form.tribuna
 
 
     span {
-        font-size: 18px;
         font-weight: 800;
     }
 
     h1:first-child {
         margin: 0;
     }
+
+    p {
+        margin: 24px 0;
+    }
+
 
     h1:last-child {
         text-decoration: underline;
@@ -85,7 +89,7 @@ iVBORw0KGgoAAAANSUhEUgAAALwAAAA4CAYAAABHaJJlAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
     {{#each reports}}
     <p><span>Name:</span> {{this.name}}</p>
     <p><span>Co-Official:</span> {{this.co_official}}</p>
-    <p><span>Teams:</span> {{this.team_1_name}} ({{this.team_1_colour}}) <strong>vs</strong> 
+    <p><span>Teams:</span> {{this.team_1_name}} ({{this.team_1_colour}}) <strong>vs</strong>
         {{this.team_2_name}} ({{this.team_2_colour}})</p>
     <p><span>Date:</span> {{this.date}} <strong>at</strong> {{this.time}}</p>
     <p><span>Venue:</span> {{this.venue}}</p>
@@ -103,7 +107,7 @@ iVBORw0KGgoAAAANSUhEUgAAALwAAAA4CAYAAABHaJJlAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
     <p><span>Summary:</span></p>
     <p>{{this.summary}}</p>
     <p><span>Person Notified:</span> {{#if this.person_notified}}Yes{{else}}No{{/if}}</p>
-    <p><span>Signature:</span>
+    <p style="margin-top: 48px;"><span>Signature:</span>
         <img src="{{this.signature}}" alt="Signature" style="max-width:200px;max-height:80px;" />
     </p>
 </div> {{/each}}`;
@@ -158,15 +162,19 @@ iVBORw0KGgoAAAANSUhEUgAAALwAAAA4CAYAAABHaJJlAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
       throw new Error('PDF generation failed.');
     }
 
+    // Determine recipient based on environment
+    const isProd = process.env.NODE_ENV === 'production';
+    const emailTo = isProd ? process.env.REPORT_EMAIL_RECIPIENT : 'itadmin@hillsraiders.com.au';
+
     // Send the PDF as an email attachment using Strapi's email plugin
     await strapi.plugin('email').service('email').send({
-      to: 'itadmin@hillsraiders.com.au',
+      to: emailTo,
       from: process.env.EMAIL_USER,
       subject: 'New Basketball WA Report Form Submission',
       text: `${entry.name} has submitted a new Basketball WA Report Form See attached PDF.`,
       attachments: [
         {
-          filename: `tribunal-report-form-${entry.venue}.pdf`,
+          filename: `tribunal-report-form-${entry.venue}-${entry.date}.pdf`,
           content: pdfBuffer,
         },
       ],

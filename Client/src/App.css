@@ -29,7 +29,7 @@
 	flex-direction: row;
 }
 
-header > div {
+header>div {
 	display: flex;
 	flex-direction: row;
 	justify-content: space-between;
@@ -68,7 +68,8 @@ header > div {
 }
 
 a {
-	color: var(--primary-color);
+	color: var(--link-color);
+	text-decoration: underline;
 }
 
 a:hover {
@@ -100,7 +101,7 @@ a:hover .icon {
 	align-items: flex-start;
 }
 
-.break-2 > div {
+.break-2>div {
 	width: inherit;
 }
 
@@ -109,7 +110,7 @@ a:hover .icon {
 		flex-wrap: wrap;
 	}
 
-	.break-2 > {
+	.break-2> {
 		flex: 1 1 100%;
 		/* Each child takes 100% width on smaller screens */
 		max-width: 100%;
@@ -155,4 +156,16 @@ a:hover .icon {
 	right: 20px;
 	left: 0;
 	align-items: end;
+}
+
+
+h1 {
+	margin: 24px 0;
+}
+
+
+
+.Mui-dark a:hover {
+	color: var(--mui-palette-primary-light, #90caf9);
+	text-decoration: underline;
 }

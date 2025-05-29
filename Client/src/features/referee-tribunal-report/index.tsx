@@ -66,6 +66,11 @@ const RefereeTribunalReport = () => {
 		return null;
 	};
 
+	const today = new Date().toISOString().slice(0, 10);
+	const now = new Date();
+	const pad = (n: number) => n.toString().padStart(2, "0");
+	const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
 	const {
 		handleSubmit,
 		control,
@@ -83,8 +88,8 @@ const RefereeTribunalReport = () => {
 				text: "",
 				color: "blue", // Default color
 			},
-			date: "",
-			time: "",
+			date: today,
+			time: currentTime,
 			venue: "",
 			personOnReport: "",
 			allegations: [] as string[],
@@ -128,9 +133,11 @@ const RefereeTribunalReport = () => {
 				allegations: data.allegations,
 			};
 
+			const isProduction = process.env.NODE_ENV === "production";
+
 			// Send the form data as JSON to the Strapi dev server
 			const response = await axios.post(
-				"http://localhost:1337/api/tribunal-report-forms", // Update this endpoint as needed
+				`${isProduction ? process.env.PROD_URL : 'http://localhost:1337'}/api/tribunal-report-forms`, // Update this endpoint as needed
 				{ data: strapiData },
 				{
 					headers: {

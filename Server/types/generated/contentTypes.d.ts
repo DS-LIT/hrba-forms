@@ -378,7 +378,7 @@ export interface ApiReimbursementFormReimbursementForm
   collectionName: 'reimbursement_forms';
   info: {
     description: '';
-    displayName: 'Reimbursement Form';
+    displayName: 'HRBA Reimbursement Form';
     pluralName: 'reimbursement-forms';
     singularName: 'reimbursement-form';
   };

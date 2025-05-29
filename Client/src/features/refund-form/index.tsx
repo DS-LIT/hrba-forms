@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,6 +12,7 @@ import axios from "axios";
 import Divider from "../../components/divider";
 
 import SignatureCanvas from 'react-signature-canvas';
+import Spinner from '../../components/spinner'
 
 
 interface ReimbursementFormProps {
@@ -32,6 +33,8 @@ const ReimbursementForm = () => {
     const navigate = useNavigate();
     const { enqueueSnackbar } = useSnackbar();
     const sigCanvasRef = useRef<SignatureCanvas>(null);
+    const [isUnder18, setIsUnder18] = useState(false);
+    const [showSpinner, setShowSpinner] = useState<boolean>(false);
 
     useEffect(() => {
         if (sigCanvasRef.current) {
@@ -57,7 +60,7 @@ const ReimbursementForm = () => {
         return null;
     };
 
-    const { handleSubmit, control, reset, formState: { errors } } = useForm({
+    const { handleSubmit, control, reset, formState: { errors }, setValue, watch } = useForm({
         defaultValues: {
             playerName: "",
             club: "",
@@ -67,10 +70,21 @@ const ReimbursementForm = () => {
             accountName: "",
             bsb: "",
             accountNumber: '',
-            date: "",
-
+            date: new Date().toISOString().split('T')[0],
+            contactName: "",
+            contactNumber: "",
+            contactEmail: "",
         },
     });
+
+    // Watch playerName to prefill contactName if needed
+    const playerName = watch("playerName");
+
+    useEffect(() => {
+        if (!isUnder18) {
+            setValue("contactName", playerName); // Prefill contactName with playerName
+        }
+    }, [playerName, isUnder18, setValue]);
 
     function toStrapiTimeFormat(time24: string): string {
         if (!time24) return "";
@@ -78,6 +92,9 @@ const ReimbursementForm = () => {
     }
 
     const onSubmit = async (data: any) => {
+        // If not under 18, ensure contactName is set to playerName
+        // TODO: Show spinner here if needed
+        setShowSpinner(true);
 
         try {
             // Ensure an account is available
@@ -98,10 +115,16 @@ const ReimbursementForm = () => {
                 account_number: data.accountNumber,
                 signature: data.signature,
                 date: toStrapiTimeFormat(data.date),
+                contact_name: data.contactName,
+                contact_number: data.contactNumber,
+                contact_email: data.contactEmail,
             };
 
+            const isProduction = process.env.NODE_ENV === "production";
+
+
             const response = await axios.post(
-                "http://localhost:1337/api/reimbursement-forms", // Update this endpoint as needed
+                `${isProduction ? process.env.PROD_URL : 'http://localhost:1337'}/api/reimbursement-forms`, // Update this endpoint as needed
                 { data: strapiData },
                 {
                     headers: {
@@ -116,16 +139,18 @@ const ReimbursementForm = () => {
                     variant: "success",
                     style: { right: "20px" },
                 });
+                setShowSpinner(false);;
             } else {
                 console.error("Failed to send data to Strapi.", response.data);
                 enqueueSnackbar("Failed to submit form", {
                     variant: "warning",
                 });
+                setShowSpinner(false);;
             }
             handleReset();
         } catch (error) {
             console.error("Error submitting form:", error);
-
+            setShowSpinner(false);;
         }
     };
 
@@ -138,6 +163,7 @@ const ReimbursementForm = () => {
 
     return (
         <div className="panel">
+            <Spinner loading={showSpinner} />
             <div className="panel-heading">
 
                 <h1>Reimbursement Form</h1>
@@ -177,7 +203,7 @@ const ReimbursementForm = () => {
                         render={({ field }) => (
                             <TextField
                                 {...field}
-                                label="Club"
+                                label="Club Name"
                                 fullWidth
                                 error={!!errors.club}
                                 helperText={errors.club?.message}
@@ -193,13 +219,103 @@ const ReimbursementForm = () => {
                         render={({ field }) => (
                             <TextField
                                 {...field}
-                                label="Team"
+                                label="Team Name"
                                 fullWidth
                                 error={!!errors.team}
                                 helperText={errors.team?.message}
                             />
                         )}
                     />
+                    {/* Is Under 18 Checkbox */}
+                    <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+                        <input
+                            type="checkbox"
+                            id="isUnder18"
+                            checked={isUnder18}
+                            onChange={e => setIsUnder18(e.target.checked)}
+                            style={{ marginRight: 8 }}
+                        />
+                        <label htmlFor="isUnder18">Is the player under the age of 18?</label>
+                    </Box>
+                    {/* Conditional Contact Fields */}
+                    {isUnder18 ? (
+                        <>
+                            <Controller
+                                name="contactName"
+                                control={control}
+                                rules={{ required: "Contact name is required" }}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        label="Contact Name"
+                                        fullWidth
+                                        error={!!errors.contactName}
+                                        helperText={errors.contactName?.message}
+                                    />
+                                )}
+                            />
+                            <Controller
+                                name="contactNumber"
+                                control={control}
+                                rules={{ required: "Contact number is required" }}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        label="Contact Number"
+                                        fullWidth
+                                        error={!!errors.contactNumber}
+                                        helperText={errors.contactNumber?.message}
+                                    />
+                                )}
+                            />
+                            <Controller
+                                name="contactEmail"
+                                control={control}
+                                rules={{ required: "Contact email is required" }}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        label="Contact Email"
+                                        fullWidth
+                                        error={!!errors.contactEmail}
+                                        helperText={errors.contactEmail?.message}
+                                    />
+                                )}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <Controller
+                                name="contactNumber"
+                                control={control}
+                                rules={{ required: "Number is required" }}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        label="Number"
+                                        fullWidth
+                                        error={!!errors.contactNumber}
+                                        helperText={errors.contactNumber?.message}
+                                    />
+                                )}
+                            />
+                            <Controller
+                                name="contactEmail"
+                                control={control}
+                                rules={{ required: "Email is required" }}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        label="Email"
+                                        fullWidth
+                                        error={!!errors.contactEmail}
+                                        helperText={errors.contactEmail?.message}
+                                    />
+                                )}
+                            />
+                        </>
+                    )}
+
                     <Divider colorClass="primary" />
                     {/* Amount Field */}
                     <Controller

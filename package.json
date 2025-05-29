@@ -1,0 +1,12 @@
+{
+    "name": "hrba-forms-root",
+    "private": true,
+    "scripts": {
+        "start": "concurrently \"npm run start --prefix Client\" \"npm run develop --prefix Server\"",
+        "build:client": "npm run build --prefix Client",
+        "build:server": "npm run build --prefix Server"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    }
+}

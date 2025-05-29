@@ -1,20 +1,18 @@
 import React from "react";
 import Panel from "../../components/panel";
-import { Link } from "react-router-dom";
 import NavigationItem from "../../components/navigationItem";
 
 const Dashboard = () => {
     return (
         <>
-            <Panel>
-                <h1>Dashboard</h1>
-            </Panel>
+            <h1>Dashboard</h1>
             <Panel><h2>Referee Forms</h2>
                 <NavigationItem to="/tribunal"><>Referee Tribuneral Report</></NavigationItem>
             </Panel>
 
             <Panel><h2>Finacial</h2>
-                <NavigationItem to="/reimbursement"><>Reimbursement Form</></NavigationItem>
+                <NavigationItem to="/hrba-reimbursement"><>Hills Raiders Reimbursement Form</></NavigationItem>
+                <NavigationItem to="/bwa-reimbursement"><>BWA Reimbursement Form</></NavigationItem>
             </Panel>
         </>
     );

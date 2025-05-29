@@ -17,6 +17,9 @@ const darkTheme = createTheme({
             primary: '#FFFFFF', // White
             secondary: '#FFDB00', // Yellow
         },
+        link: {
+            main: '#1E90FF', // Bright blue for links in dark mode
+        },
     },
 });
 
