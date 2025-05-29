@@ -133,11 +133,11 @@ const RefereeTribunalReport = () => {
 				allegations: data.allegations,
 			};
 
-			const isProduction = process.env.NODE_ENV === "production";
+			const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:1337/api";
 
 			// Send the form data as JSON to the Strapi dev server
 			const response = await axios.post(
-				`${isProduction ? process.env.PROD_URL : 'http://localhost:1337'}/api/tribunal-report-forms`, // Update this endpoint as needed
+				`${apiUrl}/tribunal-report-forms`,
 				{ data: strapiData },
 				{
 					headers: {
