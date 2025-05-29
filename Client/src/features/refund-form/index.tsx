@@ -124,7 +124,7 @@ const ReimbursementForm = () => {
 
 
             const response = await axios.post(
-                `${isProduction ? process.env.PROD_URL : 'http://localhost:1337'}/api/reimbursement-forms`, // Update this endpoint as needed
+                `${isProduction ? process.env.REACT_APP_API_URL : 'http://localhost:1337'}/api/reimbursement-forms`, // Update this endpoint as needed
                 { data: strapiData },
                 {
                     headers: {

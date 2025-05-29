@@ -2,9 +2,10 @@
     "name": "hrba-forms-root",
     "private": true,
     "scripts": {
-        "start": "concurrently \"npm run start --prefix Client\" \"npm run develop --prefix Server\"",
+        "start": "concurrently \"npm run start --prefix Client\" \"npm start --prefix Server\"",
         "build:client": "npm run build --prefix Client",
-        "build:server": "npm run build --prefix Server"
+        "build:server": "npm run build --prefix Server",
+        "build": "concurrently \"npm run build:client\" \"npm run build:server\""
     },
     "devDependencies": {
         "concurrently": "^8.2.2"
