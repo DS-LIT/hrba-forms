@@ -72,7 +72,7 @@ const ReimbursementForm = () => {
             accountNumber: 0,
             date: new Date().toISOString().split('T')[0],
             contactName: "",
-            contactNumber: 0,
+            contactNumber: '',
             contactEmail: "",
         },
     });
