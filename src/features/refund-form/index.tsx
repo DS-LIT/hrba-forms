@@ -65,14 +65,14 @@ const ReimbursementForm = () => {
             playerName: "",
             club: "",
             team: "",
-            amount: "",
+            amount: 0,
             reason: "",
             accountName: "",
-            bsb: "",
-            accountNumber: '',
+            bsb: 0,
+            accountNumber: 0,
             date: new Date().toISOString().split('T')[0],
             contactName: "",
-            contactNumber: "",
+            contactNumber: 0,
             contactEmail: "",
         },
     });
@@ -257,12 +257,19 @@ const ReimbursementForm = () => {
                             <Controller
                                 name="contactNumber"
                                 control={control}
-                                rules={{ required: "Contact number is required" }}
+                                rules={{
+                                    required: "Contact number is required",
+                                    pattern: {
+                                        value: /^[0-9]+$/,
+                                        message: "Contact number must be numeric",
+                                    },
+                                }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
                                         label="Contact Number"
                                         fullWidth
+                                        type="number"
                                         error={!!errors.contactNumber}
                                         helperText={errors.contactNumber?.message}
                                     />
@@ -271,12 +278,19 @@ const ReimbursementForm = () => {
                             <Controller
                                 name="contactEmail"
                                 control={control}
-                                rules={{ required: "Contact email is required" }}
+                                rules={{
+                                    required: "Contact email is required",
+                                    pattern: {
+                                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                        message: "Invalid email address",
+                                    },
+                                }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
                                         label="Contact Email"
                                         fullWidth
+                                        type="email"
                                         error={!!errors.contactEmail}
                                         helperText={errors.contactEmail?.message}
                                     />
@@ -288,12 +302,19 @@ const ReimbursementForm = () => {
                             <Controller
                                 name="contactNumber"
                                 control={control}
-                                rules={{ required: "Number is required" }}
+                                rules={{
+                                    required: "Number is required",
+                                    pattern: {
+                                        value: /^[0-9]+$/,
+                                        message: "Contact number must be numeric",
+                                    },
+                                }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
                                         label="Number"
                                         fullWidth
+                                        type="number"
                                         error={!!errors.contactNumber}
                                         helperText={errors.contactNumber?.message}
                                     />
@@ -302,12 +323,19 @@ const ReimbursementForm = () => {
                             <Controller
                                 name="contactEmail"
                                 control={control}
-                                rules={{ required: "Email is required" }}
+                                rules={{
+                                    required: "Email is required",
+                                    pattern: {
+                                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                        message: "Invalid email address",
+                                    },
+                                }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
                                         label="Email"
                                         fullWidth
+                                        type="email"
                                         error={!!errors.contactEmail}
                                         helperText={errors.contactEmail?.message}
                                     />
