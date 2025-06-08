@@ -158,6 +158,8 @@ const RefereeTribunalReport = () => {
 					style: { right: "20px" },
 				});
 				setShowSpinner(false);
+				handleReset();
+
 			} else {
 				console.error("Failed to send data to Strapi.", response.data);
 				enqueueSnackbar("Failed to submit form", {
@@ -165,7 +167,6 @@ const RefereeTribunalReport = () => {
 				});
 				setShowSpinner(false);
 			}
-			handleReset();
 		} catch (error) {
 			console.error("Error submitting form:", error);
 			enqueueSnackbar("Failed to submit form", {
@@ -173,7 +174,6 @@ const RefereeTribunalReport = () => {
 				style: { float: "right" },
 			});
 			setShowSpinner(false);
-			handleReset();
 		}
 	};
 
