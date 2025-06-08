@@ -137,7 +137,7 @@ const RefereeTribunalReport = () => {
 
 			// Send the form data as JSON to the Strapi dev server
 			const response = await axios.post(
-				`${apiUrl}/tribunal-report-forms`,
+				`${apiUrl}/api/tribunal-report-forms`,
 				{ data: strapiData },
 				{
 					headers: {
