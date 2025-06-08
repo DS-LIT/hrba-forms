@@ -16,6 +16,7 @@ import {
 import { useSnackbar } from "notistack";
 import axios from "axios";
 import SignatureCanvas from "react-signature-canvas";
+import Spinner from "../../components/spinner"; // Adjust the import based on your project structure
 
 interface RefereeTribunalReportForm {
 	name: string;
@@ -41,6 +42,7 @@ const RefereeTribunalReport = () => {
 	const navigate = useNavigate();
 	const sigCanvasRef = useRef<SignatureCanvas>(null);
 	const { enqueueSnackbar } = useSnackbar();
+	const [showSpinner, setShowSpinner] = React.useState<boolean>(false);
 
 	useEffect(() => {
 		if (sigCanvasRef.current) {
@@ -105,6 +107,7 @@ const RefereeTribunalReport = () => {
 	}
 
 	const onSubmit = async (data: any) => {
+		setShowSpinner(true);
 		try {
 			const signatureDataUrl = saveSignatureToFormData();
 			if (signatureDataUrl) {
@@ -133,9 +136,11 @@ const RefereeTribunalReport = () => {
 				allegations: data.allegations,
 			};
 
-			const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:1337/api";
+			const isProduction = process.env.NODE_ENV === "production";
+			const apiUrl = isProduction
+				? process.env.REACT_APP_API_URL
+				: "http://localhost:1337";
 
-			// Send the form data as JSON to the Strapi dev server
 			const response = await axios.post(
 				`${apiUrl}/api/tribunal-report-forms`,
 				{ data: strapiData },
@@ -152,19 +157,23 @@ const RefereeTribunalReport = () => {
 					variant: "success",
 					style: { right: "20px" },
 				});
-				handleReset();
+				setShowSpinner(false);
 			} else {
 				console.error("Failed to send data to Strapi.", response.data);
 				enqueueSnackbar("Failed to submit form", {
 					variant: "warning",
 				});
+				setShowSpinner(false);
 			}
+			handleReset();
 		} catch (error) {
 			console.error("Error submitting form:", error);
 			enqueueSnackbar("Failed to submit form", {
 				variant: "warning",
 				style: { float: "right" },
 			});
+			setShowSpinner(false);
+			handleReset();
 		}
 	};
 
@@ -175,6 +184,7 @@ const RefereeTribunalReport = () => {
 
 	return (
 		<div className="panel">
+			<Spinner loading={showSpinner} />
 			<div className="panel-heading">
 				<h1>Referee Tribunal Report</h1>
 				<Button
