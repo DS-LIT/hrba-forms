@@ -10,7 +10,7 @@ const Dashboard = () => {
                 <NavigationItem to="/tribunal"><>Referee Tribuneral Report</></NavigationItem>
             </Panel>
 
-            <Panel><h2>Finacial</h2>
+            <Panel><h2>Financial</h2>
                 <NavigationItem to="/hrba-reimbursement"><>Hills Raiders Reimbursement Form</></NavigationItem>
                 <NavigationItem to="/bwa-reimbursement"><>BWA Reimbursement Form</></NavigationItem>
             </Panel>
