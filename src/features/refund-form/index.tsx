@@ -72,7 +72,7 @@ const ReimbursementForm = () => {
             accountNumber: '',
             date: new Date().toISOString().split('T')[0],
             contactName: "",
-            contactNumber: '',
+            contactNumber: '', // keep as string
             contactEmail: "",
         },
     });
@@ -239,7 +239,7 @@ const ReimbursementForm = () => {
                     </Box>
                     {/* Conditional Contact Fields */}
                     {isUnder18 ? (
-                        <>
+                        <React.Fragment key="under18">
                             <Controller
                                 name="contactName"
                                 control={control}
@@ -269,7 +269,8 @@ const ReimbursementForm = () => {
                                         {...field}
                                         label="Contact Number"
                                         fullWidth
-                                        type="number"
+                                        type="text"
+                                        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                                         error={!!errors.contactNumber}
                                         helperText={errors.contactNumber?.message}
                                     />
@@ -296,14 +297,15 @@ const ReimbursementForm = () => {
                                     />
                                 )}
                             />
-                        </>
+                        </React.Fragment>
                     ) : (
-                        <>
+                        <React.Fragment key="notUnder18">
+                            {/* Do not render contactName at all when not under 18 */}
                             <Controller
                                 name="contactNumber"
                                 control={control}
                                 rules={{
-                                    required: "Number is required",
+                                    required: "Contact number is required",
                                     pattern: {
                                         value: /^[0-9]+$/,
                                         message: "Contact number must be numeric",
@@ -312,9 +314,10 @@ const ReimbursementForm = () => {
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Number"
+                                        label="Contact Number"
                                         fullWidth
-                                        type="number"
+                                        type="text"
+                                        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                                         error={!!errors.contactNumber}
                                         helperText={errors.contactNumber?.message}
                                     />
@@ -324,7 +327,7 @@ const ReimbursementForm = () => {
                                 name="contactEmail"
                                 control={control}
                                 rules={{
-                                    required: "Email is required",
+                                    required: "Contact email is required",
                                     pattern: {
                                         value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                                         message: "Invalid email address",
@@ -333,7 +336,7 @@ const ReimbursementForm = () => {
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Email"
+                                        label="Contact Email"
                                         fullWidth
                                         type="email"
                                         error={!!errors.contactEmail}
@@ -341,7 +344,7 @@ const ReimbursementForm = () => {
                                     />
                                 )}
                             />
-                        </>
+                        </React.Fragment>
                     )}
 
                     <Divider colorClass="primary" />
@@ -408,16 +411,30 @@ const ReimbursementForm = () => {
                         <Controller
                             name="bsb"
                             control={control}
-                            rules={{ required: "BSB is required" }}
-                            render={({ field }) => (
+                            rules={{
+                                required: "BSB is required",
+                                pattern: {
+                                    value: /^\d{3}-\d{3}$/,
+                                    message: "BSB must be in the format 123-456",
+                                },
+                            }}
+                            render={({ field: { onChange, value, ...rest } }) => (
                                 <TextField
-                                    {...field}
+                                    {...rest}
+                                    value={value}
                                     label="BSB"
-                                    type="number"
+                                    type="text"
                                     fullWidth
-                                    onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
+                                    inputProps={{ pattern: "\\d{3}-\\d{3}", placeholder: "123-456", maxLength: 7 }}
                                     error={!!errors.bsb}
-                                    helperText={errors.bsb?.message}
+                                    helperText={errors.bsb?.message || "Format: 123-456"}
+                                    onChange={e => {
+                                        let v = e.target.value.replace(/[^0-9]/g, "");
+                                        if (v.length > 3) v = v.slice(0, 3) + '-' + v.slice(3, 6);
+                                        else v = v;
+                                        if (v.length > 7) v = v.slice(0, 7);
+                                        onChange(v);
+                                    }}
                                 />
                             )}
                         />

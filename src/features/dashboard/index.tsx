@@ -5,7 +5,7 @@ import NavigationItem from "../../components/navigationItem";
 const Dashboard = () => {
     return (
         <>
-            <h1>Dashboard</h1>
+            <h1>Hills Raiders Forms</h1>
             <Panel><h2>Referee Forms</h2>
                 <NavigationItem to="/tribunal"><>Referee Tribuneral Report</></NavigationItem>
             </Panel>
