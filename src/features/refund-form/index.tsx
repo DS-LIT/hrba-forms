@@ -166,7 +166,7 @@ const ReimbursementForm = () => {
             <Spinner loading={showSpinner} />
             <div className="panel-heading">
 
-                <h1>Reimbursement Form</h1>
+                <h1>Refund Form</h1>
                 <Button
                     type="button"
                     variant="contained"

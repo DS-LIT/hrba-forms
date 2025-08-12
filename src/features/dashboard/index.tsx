@@ -11,8 +11,8 @@ const Dashboard = () => {
             </Panel>
 
             <Panel><h2>Financial</h2>
-                <NavigationItem to="/hrba-reimbursement"><>Hills Raiders Reimbursement Form</></NavigationItem>
-                <NavigationItem to="/bwa-reimbursement"><>BWA Reimbursement Form</></NavigationItem>
+                <NavigationItem to="/hrba-reimbursement"><>Hills Raiders Refund Form</></NavigationItem>
+                <NavigationItem to="/bwa-reimbursement"><>BWA Refund Form</></NavigationItem>
             </Panel>
         </>
     );
