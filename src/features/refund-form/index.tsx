@@ -111,12 +111,12 @@ const ReimbursementForm = () => {
                 amount: data.amount,
                 reason: data.reason,
                 account_name: data.accountName,
-                bsb: data.bsb,
-                account_number: data.accountNumber,
+                bsb: data.bsb.replace('-', ''), // Remove dash if database expects numeric
+                account_number: parseInt(data.accountNumber) || 0,
                 signature: data.signature,
                 date: toStrapiTimeFormat(data.date),
                 contact_name: data.contactName,
-                contact_number: data.contactNumber,
+                contact_number: parseInt(data.contactNumber) || 0,
                 contact_email: data.contactEmail,
             };
 
