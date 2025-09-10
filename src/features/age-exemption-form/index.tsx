@@ -362,14 +362,14 @@ const AgeGroupExemptionForm = () => {
                         Documentation can include a medical certificate, letter from a GP or medical specialist, school principal / teacher. A letter from the parent/Guardian may be considered.
                     </p>
 
-                    <Box sx={{ mb: 2 }}>
-                        <b>Upload Supporting Documentation (PNG, PDF, Word docs, max 5 files):</b>
+                    <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column' }}>
+                        <b>Upload Supporting Documentation (PNG, JPG, PDF, Word docs, max 5 files):</b>
                         <Button
                             component="label"
                             variant="contained"
                             startIcon={<CloudUploadIcon />}
                             disabled={wablChecked || selectedFiles.length >= 5}
-                            sx={{ mt: 1 }}
+                            sx={{ mt: 1, width: 'fit-content' }}
                         >
                             Upload files
                             <VisuallyHiddenInput
