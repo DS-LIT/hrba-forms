@@ -26,6 +26,7 @@ interface ReimbursementFormProps {
     accountNumber: number;
     date: "",
     signature: string;
+    playersAge: number;
 }
 
 const ReimbursementForm = () => {
@@ -33,6 +34,7 @@ const ReimbursementForm = () => {
     const navigate = useNavigate();
     const { enqueueSnackbar } = useSnackbar();
     const sigCanvasRef = useRef<SignatureCanvas>(null);
+    // Derived flag instead of manual checkbox; now driven by playersAge number input
     const [isUnder18, setIsUnder18] = useState(false);
     const [showSpinner, setShowSpinner] = useState<boolean>(false);
 
@@ -74,11 +76,18 @@ const ReimbursementForm = () => {
             contactName: "",
             contactNumber: '', // keep as string
             contactEmail: "",
+            playersAge: 0,
         },
     });
 
     // Watch playerName to prefill contactName if needed
     const playerName = watch("playerName");
+    const playersAge = watch("playersAge");
+
+    // Update isUnder18 automatically whenever playersAge changes
+    useEffect(() => {
+        setIsUnder18((playersAge || 0) < 18);
+    }, [playersAge]);
 
     useEffect(() => {
         if (!isUnder18) {
@@ -118,6 +127,7 @@ const ReimbursementForm = () => {
                 contact_name: data.contactName,
                 contact_number: parseInt(data.contactNumber) || 0,
                 contact_email: data.contactEmail,
+                players_age: data.playersAge || 0,
             };
 
             const isProduction = process.env.NODE_ENV === "production";
@@ -226,28 +236,38 @@ const ReimbursementForm = () => {
                             />
                         )}
                     />
-                    {/* Is Under 18 Checkbox */}
-                    <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-                        <input
-                            type="checkbox"
-                            id="isUnder18"
-                            checked={isUnder18}
-                            onChange={e => setIsUnder18(e.target.checked)}
-                            style={{ marginRight: 8 }}
-                        />
-                        <label htmlFor="isUnder18">Is the player under the age of 18?</label>
-                    </Box>
+                    {/* Players Age Number Field (replaces under-18 checkbox) */}
+                    <Controller
+                        name="playersAge"
+                        control={control}
+                        rules={{
+                            required: "Players age is required",
+                            min: { value: 1, message: "Age must be at least 1" },
+                            max: { value: 120, message: "Age must be realistic" },
+                        }}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                label="Players Age"
+                                type="number"
+                                fullWidth
+                                onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
+                                error={!!errors.playersAge}
+                                helperText={errors.playersAge?.message}
+                            />
+                        )}
+                    />
                     {/* Conditional Contact Fields */}
                     {isUnder18 ? (
                         <React.Fragment key="under18">
                             <Controller
                                 name="contactName"
                                 control={control}
-                                rules={{ required: "Contact name is required" }}
+                                rules={{ required: "Parent/Guardian name is required" }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Contact Name"
+                                        label="Parent/Guardian Name"
                                         fullWidth
                                         error={!!errors.contactName}
                                         helperText={errors.contactName?.message}
@@ -258,16 +278,16 @@ const ReimbursementForm = () => {
                                 name="contactNumber"
                                 control={control}
                                 rules={{
-                                    required: "Contact number is required",
+                                    required: "Parent/Guardian number is required",
                                     pattern: {
                                         value: /^[0-9]+$/,
-                                        message: "Contact number must be numeric",
+                                        message: "Parent/Guardian number must be numeric",
                                     },
                                 }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Contact Number"
+                                        label="Parent/Guardian Number"
                                         fullWidth
                                         type="text"
                                         inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
@@ -280,7 +300,7 @@ const ReimbursementForm = () => {
                                 name="contactEmail"
                                 control={control}
                                 rules={{
-                                    required: "Contact email is required",
+                                    required: "Parent/Guardian email is required",
                                     pattern: {
                                         value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                                         message: "Invalid email address",
@@ -289,7 +309,7 @@ const ReimbursementForm = () => {
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Contact Email"
+                                        label="Parent/Guardian Email"
                                         fullWidth
                                         type="email"
                                         error={!!errors.contactEmail}
@@ -305,16 +325,16 @@ const ReimbursementForm = () => {
                                 name="contactNumber"
                                 control={control}
                                 rules={{
-                                    required: "Contact number is required",
+                                    required: "Players number is required",
                                     pattern: {
                                         value: /^[0-9]+$/,
-                                        message: "Contact number must be numeric",
+                                        message: "Players number must be numeric",
                                     },
                                 }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Contact Number"
+                                        label="Players Number"
                                         fullWidth
                                         type="text"
                                         inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
@@ -327,7 +347,7 @@ const ReimbursementForm = () => {
                                 name="contactEmail"
                                 control={control}
                                 rules={{
-                                    required: "Contact email is required",
+                                    required: "Players email is required",
                                     pattern: {
                                         value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                                         message: "Invalid email address",
@@ -336,7 +356,7 @@ const ReimbursementForm = () => {
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Contact Email"
+                                        label="Players Email"
                                         fullWidth
                                         type="email"
                                         error={!!errors.contactEmail}
@@ -367,7 +387,7 @@ const ReimbursementForm = () => {
                                 }}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                                 error={!!errors.amount}
-                                helperText={errors.amount?.message}
+                                helperText={errors.amount?.message || "Refund request is only for HRBA registration fee, BWA Refund to be completed on BWA Refund form, Clubs Fees refund are to be directed to your club."}
                             />
                         )}
                     />
@@ -402,7 +422,7 @@ const ReimbursementForm = () => {
                                 label="Account Name"
                                 fullWidth
                                 error={!!errors.accountName}
-                                helperText={errors.accountName?.message}
+                                helperText={errors.accountName?.message || "Name of your bank account - ie John Smith"}
                             />
                         )}
                     />

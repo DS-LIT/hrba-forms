@@ -169,3 +169,7 @@ h1 {
 	color: var(--mui-palette-primary-light, #90caf9);
 	text-decoration: underline;
 }
+
+.MuiFormHelperText-root {
+	margin-left: 0 !important;
+}
