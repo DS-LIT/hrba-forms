@@ -19,11 +19,11 @@ interface ReimbursementFormProps {
     playerName: string;
     club: string;
     team: string;
-    amount: number;
+    amount: number; // kept as number in interface; form stores string then converts
     reason: string;
     accountName: string;
-    bsb: number;
-    accountNumber: number;
+    bsb: string; // keep as formatted string e.g. 123-456
+    accountNumber: string; // keep as raw string to preserve leading zeros
     date: "",
     signature: string;
     playersAge: number;
@@ -67,7 +67,7 @@ const ReimbursementForm = () => {
             playerName: "",
             club: "",
             team: "",
-            amount: 0,
+            amount: '',
             reason: "",
             accountName: "",
             bsb: '',
@@ -76,7 +76,7 @@ const ReimbursementForm = () => {
             contactName: "",
             contactNumber: '', // keep as string
             contactEmail: "",
-            playersAge: 0,
+            playersAge: '',
         },
     });
 
@@ -86,7 +86,8 @@ const ReimbursementForm = () => {
 
     // Update isUnder18 automatically whenever playersAge changes
     useEffect(() => {
-        setIsUnder18((playersAge || 0) < 18);
+        const ageNum = Number(playersAge);
+        setIsUnder18(!isNaN(ageNum) && ageNum < 18);
     }, [playersAge]);
 
     useEffect(() => {
@@ -117,21 +118,23 @@ const ReimbursementForm = () => {
                 player_name: data.playerName,
                 club_name: data.club,
                 team_name: data.team,
-                amount: data.amount,
+                amount: parseFloat(data.amount) || 0,
                 reason: data.reason,
                 account_name: data.accountName,
-                bsb: data.bsb.replace('-', ''), // Remove dash if database expects numeric
-                account_number: parseInt(data.accountNumber) || 0,
+                // send bsb without dash if backend field is numeric, otherwise keep original
+                bsb: data.bsb ? data.bsb.replace('-', '') : '',
+                // IMPORTANT: keep as string so any leading zeros are preserved
+                account_number: (data.accountNumber ?? '').trim(),
                 signature: data.signature,
                 date: toStrapiTimeFormat(data.date),
                 contact_name: data.contactName,
-                contact_number: parseInt(data.contactNumber) || 0,
+                // Keep phone/contact number as string to preserve leading 0 (common in AU numbers)
+                contact_number: (data.contactNumber ?? '').trim(),
                 contact_email: data.contactEmail,
-                players_age: data.playersAge || 0,
+                players_age: parseInt(data.playersAge, 10) || 0,
             };
 
             const isProduction = process.env.NODE_ENV === "production";
-
 
             const response = await axios.post(
                 `${isProduction ? process.env.REACT_APP_API_URL : 'http://localhost:1337'}/api/reimbursement-forms`, // Update this endpoint as needed
@@ -242,16 +245,27 @@ const ReimbursementForm = () => {
                         control={control}
                         rules={{
                             required: "Players age is required",
-                            min: { value: 1, message: "Age must be at least 1" },
-                            max: { value: 120, message: "Age must be realistic" },
+                            validate: (value: string) => {
+                                if (value === undefined || value === null || value === '') return "Players age is required";
+                                if (!/^\d+$/.test(value)) return "Age must be a whole number";
+                                const n = Number(value);
+                                if (n < 1) return "Age must be at least 1";
+                                if (n > 120) return "Age must be realistic";
+                                return true;
+                            }
                         }}
-                        render={({ field }) => (
+                        render={({ field: { onChange, value, ...rest } }) => (
                             <TextField
-                                {...field}
+                                {...rest}
+                                value={value}
                                 label="Players Age"
-                                type="number"
+                                type="text"
                                 fullWidth
-                                onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
+                                inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 3 }}
+                                onChange={(e) => {
+                                    const digits = e.target.value.replace(/[^0-9]/g, '');
+                                    onChange(digits);
+                                }}
                                 error={!!errors.playersAge}
                                 helperText={errors.playersAge?.message}
                             />
@@ -372,22 +386,47 @@ const ReimbursementForm = () => {
                     <Controller
                         name="amount"
                         control={control}
-                        rules={{ required: "Amount is required" }}
-                        render={({ field }) => (
+                        rules={{
+                            required: "Amount is required",
+                            validate: (value: string) => {
+                                if (value === undefined || value === null || value === '') return "Amount is required";
+                                // Allow digits with optional decimal (0-4 decimal places). Accept trailing dot while typing.
+                                if (!/^\d+(\.(\d{0,4})?)?$/.test(value)) return "Amount must be numeric (up to 4 decimals)";
+                                // Reject just '.' or '0.' style zero values when parsing finishes
+                                if (value === '.' || /^0*\.0*$/.test(value)) return "Amount must be greater than 0";
+                                if (parseFloat(value) <= 0) return "Amount must be greater than 0";
+                                return true;
+                            }
+                        }}
+                        render={({ field: { onChange, value, ...rest } }) => (
                             <TextField
-                                {...field}
+                                {...rest}
+                                value={value}
                                 label="Amount"
-                                type="number"
+                                type="text"
                                 fullWidth
+                                // pattern removed to allow decimal point on mobile keyboards
+                                inputProps={{ inputMode: 'decimal', maxLength: 12 }}
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">$
                                         </InputAdornment>
                                     ),
                                 }}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => {
+                                    // Allow only digits and a single decimal point, strip others
+                                    let v = e.target.value.replace(/[^0-9.]/g, '');
+                                    const firstDot = v.indexOf('.');
+                                    if (firstDot !== -1) {
+                                        // remove any additional dots
+                                        v = v.substring(0, firstDot + 1) + v.substring(firstDot + 1).replace(/\./g, '');
+                                    }
+                                    // limit to 4 decimal places if present (currency-like precision but extended)
+                                    v = v.replace(/(\.[0-9]{4}).*/, '$1');
+                                    onChange(v);
+                                }}
                                 error={!!errors.amount}
-                                helperText={errors.amount?.message || "Refund request is only for HRBA registration fee, BWA Refund to be completed on BWA Refund form, Clubs Fees refund are to be directed to your club."}
+                                helperText={errors.amount?.message || "Refund is only for HRBA registration fee; BWA or Club fees handled elsewhere."}
                             />
                         )}
                     />
@@ -463,16 +502,28 @@ const ReimbursementForm = () => {
                         <Controller
                             name="accountNumber"
                             control={control}
-                            rules={{ required: "Account number is required" }}
-                            render={({ field }) => (
+                            rules={{
+                                required: "Account number is required",
+                                pattern: {
+                                    value: /^[0-9]{4,12}$/,
+                                    message: "Account number must be 4-12 digits",
+                                },
+                            }}
+                            render={({ field: { onChange, value, ...rest } }) => (
                                 <TextField
-                                    {...field}
+                                    {...rest}
+                                    value={value}
                                     label="Account Number"
-                                    type="number"
+                                    type="text"
                                     fullWidth
-                                    onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
+                                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 12 }}
                                     error={!!errors.accountNumber}
-                                    helperText={errors.accountNumber?.message}
+                                    helperText={errors.accountNumber?.message || "Digits only."}
+                                    onChange={(e) => {
+                                        // Strip non-digits but keep leading zeros by not converting to number
+                                        const digits = e.target.value.replace(/[^0-9]/g, '');
+                                        onChange(digits);
+                                    }}
                                 />
                             )}
                         />
