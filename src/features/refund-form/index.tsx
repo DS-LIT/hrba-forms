@@ -292,16 +292,16 @@ const ReimbursementForm = () => {
                                 name="contactNumber"
                                 control={control}
                                 rules={{
-                                    required: "Parent/Guardian number is required",
+                                    required: "Parent/Guardian phone number is required",
                                     pattern: {
                                         value: /^[0-9]+$/,
-                                        message: "Parent/Guardian number must be numeric",
+                                        message: "Parent/Guardian phone number must be numeric",
                                     },
                                 }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Parent/Guardian Number"
+                                        label="Parent/Guardian Phone Number"
                                         fullWidth
                                         type="text"
                                         inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
@@ -339,16 +339,16 @@ const ReimbursementForm = () => {
                                 name="contactNumber"
                                 control={control}
                                 rules={{
-                                    required: "Players number is required",
+                                    required: "Players phone number is required",
                                     pattern: {
                                         value: /^[0-9]+$/,
-                                        message: "Players number must be numeric",
+                                        message: "Players phone number must be numeric",
                                     },
                                 }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Players Number"
+                                        label="Players Phone Number"
                                         fullWidth
                                         type="text"
                                         inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
@@ -518,7 +518,7 @@ const ReimbursementForm = () => {
                                     fullWidth
                                     inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 12 }}
                                     error={!!errors.accountNumber}
-                                    helperText={errors.accountNumber?.message || "Digits only."}
+                                    helperText={errors.accountNumber?.message || ""}
                                     onChange={(e) => {
                                         // Strip non-digits but keep leading zeros by not converting to number
                                         const digits = e.target.value.replace(/[^0-9]/g, '');
