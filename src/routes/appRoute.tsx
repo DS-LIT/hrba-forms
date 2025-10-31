@@ -14,7 +14,6 @@ function AppRoutes() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/tribunal" element={<RefereeTribunalReport />} />
             <Route path="/hrba-reimbursement" element={<ReimbursementForm />} />
-            <Route path="/bwa-reimbursement" element={<BwaRefundForm />} />
             <Route path="/uniform-exemption" element={<UniformExeptionForm />} />
             <Route path="/age-exemption" element={<AgeGroupExemptionForm />} />
         </Routes>

@@ -12,7 +12,7 @@ const Dashboard = () => {
 
             <Panel><h2>Financial</h2>
                 <NavigationItem to="/hrba-reimbursement"><>Hills Raiders Refund Form</></NavigationItem>
-                <NavigationItem to="/bwa-reimbursement"><>BWA Refund Form</></NavigationItem>
+                <NavigationItem to="https://forms.office.com/r/y50YxwMH39"><>BWA Refund Form</></NavigationItem>
             </Panel>
         </>
     );
