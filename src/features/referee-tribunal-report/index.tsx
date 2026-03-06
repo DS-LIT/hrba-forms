@@ -67,11 +67,15 @@ const RefereeTribunalReport = () => {
 	const pad = (n: number) => n.toString().padStart(2, "0");
 	const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
+	// Track whether the user clicked "Submit & Duplicate" vs plain "Submit"
+	const isDuplicateRef = useRef(false);
+
 	const {
 		handleSubmit,
 		control,
 		reset,
 		trigger,
+		getValues,
 		formState: { errors },
 	} = useForm({
 		defaultValues: {
@@ -210,9 +214,15 @@ const RefereeTribunalReport = () => {
 					style: { right: "20px" },
 				});
 				setShowSpinner(false);
-				handleReset();
+				if (isDuplicateRef.current) {
+					isDuplicateRef.current = false;
+					handleDuplicate();
+				} else {
+					handleReset();
+				}
 			} else {
 				console.error("Failed to send data to Strapi.", response.data);
+				isDuplicateRef.current = false;
 				enqueueSnackbar("Failed to submit form", {
 					variant: "warning",
 				});
@@ -220,6 +230,7 @@ const RefereeTribunalReport = () => {
 			}
 		} catch (error) {
 			console.error("Error submitting form:", error);
+			isDuplicateRef.current = false;
 			enqueueSnackbar("Failed to submit form", {
 				variant: "warning",
 				style: { float: "right" },
@@ -232,6 +243,24 @@ const RefereeTribunalReport = () => {
 		reset();
 		clearSignature();
 		setActiveStep(0);
+	};
+
+	/**
+	 * After a successful "Submit & Duplicate", keep all form values except
+	 * clear the person-on-report field and the signature/declaration so the
+	 * user can immediately fill in the next person's name and re-sign.
+	 */
+	const handleDuplicate = () => {
+		const current = getValues();
+		reset({
+			...current,
+			personOnReport: "",
+			declarationConfirmed: false,
+		});
+		clearSignature();
+		// Stepper is 0-indexed: index 3 = "Incident Details" (the 4th step),
+		// which contains the personOnReport field the user needs to change.
+		setActiveStep(3);
 	};
 
 	const renderStepContent = () => {
@@ -703,13 +732,23 @@ const RefereeTribunalReport = () => {
 						</Button>
 
 						{isLastStep ? (
-							<Button
-								type="submit"
-								variant="contained"
-								color="primary"
-							>
-								Submit
-							</Button>
+							<Box sx={{ display: "flex", gap: 1 }}>
+								<Button
+									type="submit"
+									variant="outlined"
+									color="primary"
+								>
+									Submit
+								</Button>
+								<Button
+									type="submit"
+									variant="contained"
+									color="primary"
+									onClick={() => { isDuplicateRef.current = true; }}
+								>
+									Submit &amp; Duplicate
+								</Button>
+							</Box>
 						) : (
 							<Button
 								type="button"
