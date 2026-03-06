@@ -15,20 +15,6 @@ import SignatureCanvas from 'react-signature-canvas';
 import Spinner from '../../components/spinner'
 
 
-interface ReimbursementFormProps {
-    playerName: string;
-    club: string;
-    team: string;
-    amount: number; // kept as number in interface; form stores string then converts
-    reason: string;
-    accountName: string;
-    bsb: string; // keep as formatted string e.g. 123-456
-    accountNumber: string; // keep as raw string to preserve leading zeros
-    date: "",
-    signature: string;
-    playersAge: number;
-}
-
 const ReimbursementForm = () => {
 
     const navigate = useNavigate();
@@ -490,7 +476,6 @@ const ReimbursementForm = () => {
                                     onChange={e => {
                                         let v = e.target.value.replace(/[^0-9]/g, "");
                                         if (v.length > 3) v = v.slice(0, 3) + '-' + v.slice(3, 6);
-                                        else v = v;
                                         if (v.length > 7) v = v.slice(0, 7);
                                         onChange(v);
                                     }}

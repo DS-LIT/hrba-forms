@@ -5,30 +5,13 @@ import {
     TextField,
     Button,
     Box,
-    InputAdornment
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import axios from "axios";
-import Divider from "../../components/divider";
 
 import SignatureCanvas from 'react-signature-canvas';
 import Spinner from '../../components/spinner'
-import e from "express";
 
-
-interface UniformExeptionFormProps {
-    season: string;
-    fullName: string;
-    gender: string;
-    dateOfBirth: string;
-    registeredTeam: string;
-    competitionAgeGroup: string;
-    contactNumber: number;
-    exemptionReason: string;
-    signature: string;
-    dateLodged: string
-    club: string;
-}
 
 const UniformExeptionForm = () => {
 
@@ -72,7 +55,7 @@ const UniformExeptionForm = () => {
                 setAccessChecked(true);
                 console.error("Error validating token:", err);
             });
-    }, []);
+    }, [isProduction]);
 
     useEffect(() => {
         if (sigCanvasRef.current) {
@@ -98,7 +81,7 @@ const UniformExeptionForm = () => {
         return null;
     };
 
-    const { handleSubmit, control, reset, formState: { errors }, setValue, watch } = useForm({
+    const { handleSubmit, control, reset, formState: { errors } } = useForm({
         defaultValues: {
             season: "",
             fullName: "",

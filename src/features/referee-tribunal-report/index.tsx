@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,61 +12,55 @@ import {
 	FormGroup,
 	FormControlLabel,
 	Checkbox,
+	Stepper,
+	Step,
+	StepLabel,
+	Typography,
+	Alert,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import axios from "axios";
 import SignatureCanvas from "react-signature-canvas";
-import Spinner from "../../components/spinner"; // Adjust the import based on your project structure
+import Spinner from "../../components/spinner";
 
-interface RefereeTribunalReportForm {
-	name: string;
-	coOfficial: string;
-	team1: {
-		text: string;
-		color: string;
-	};
-	team2: {
-		text: string;
-		color: string;
-	};
-	date: string;
-	time: string;
-	venue: string;
-	personOnReport: string;
-	allegations: string[];
-	summary: string;
-	personsNotified: boolean;
-}
+const STEPS = [
+	"Introduction",
+	"Reporter Details",
+	"Team Information",
+	"Incident Details",
+	"Signature & Declaration",
+];
+
+const ALLEGATION_OPTIONS = [
+	"Disputed decisions of officials or breached code of conduct.",
+	"Used abusive, threatening, obscene language or gestures.",
+	"Acted in an unsportsmanlike manner in or around the stadium, including damage to property.",
+	"Attempted to trip, strike, push, elbow or kick player/official.",
+	"Tripped, punched, slapped, pushed, elbowed, kicked or spat at a player/official.",
+	"Participated in basketball activities whilst suspended.",
+	"Engaged in conduct likely to bring the game into disrepute.",
+	"Deliberately did an act endangering safety/health of players/spectators/officials.",
+];
+
+const COLOUR_OPTIONS = [
+	{ value: "red", label: "Red" },
+	{ value: "blue", label: "Blue" },
+	{ value: "green", label: "Green" },
+	{ value: "yellow", label: "Yellow" },
+	{ value: "orange", label: "Orange" },
+	{ value: "purple", label: "Purple" },
+	{ value: "pink", label: "Pink" },
+	{ value: "brown", label: "Brown" },
+	{ value: "black", label: "Black" },
+	{ value: "white", label: "White" },
+];
 
 const RefereeTribunalReport = () => {
 	const navigate = useNavigate();
 	const sigCanvasRef = useRef<SignatureCanvas>(null);
 	const { enqueueSnackbar } = useSnackbar();
-	const [showSpinner, setShowSpinner] = React.useState<boolean>(false);
-
-	useEffect(() => {
-		if (sigCanvasRef.current) {
-			const canvas = sigCanvasRef.current.getCanvas();
-			const ratio = Math.max(window.devicePixelRatio || 1, 1);
-			canvas.width = canvas.offsetWidth * ratio;
-			canvas.height = canvas.offsetHeight * ratio;
-			canvas.getContext("2d")?.scale(ratio, ratio);
-		}
-	}, []);
-
-	const clearSignature = () => {
-		if (sigCanvasRef.current) {
-			sigCanvasRef.current.clear(); // Clear the canvas
-		}
-	};
-
-	const saveSignatureToFormData = () => {
-		if (sigCanvasRef.current) {
-			const signatureDataUrl = sigCanvasRef.current.toDataURL();
-			return signatureDataUrl;
-		}
-		return null;
-	};
+	const [showSpinner, setShowSpinner] = useState<boolean>(false);
+	const [activeStep, setActiveStep] = useState(0);
 
 	const today = new Date().toISOString().slice(0, 10);
 	const now = new Date();
@@ -77,6 +71,7 @@ const RefereeTribunalReport = () => {
 		handleSubmit,
 		control,
 		reset,
+		trigger,
 		formState: { errors },
 	} = useForm({
 		defaultValues: {
@@ -84,11 +79,11 @@ const RefereeTribunalReport = () => {
 			coOfficial: "",
 			team1: {
 				text: "",
-				color: "red", // Default color
+				color: "red",
 			},
 			team2: {
 				text: "",
-				color: "blue", // Default color
+				color: "blue",
 			},
 			date: today,
 			time: currentTime,
@@ -97,10 +92,68 @@ const RefereeTribunalReport = () => {
 			allegations: [] as string[],
 			summary: "",
 			personsNotified: false,
+			declarationConfirmed: false,
 		},
 	});
 
-	// Helper to convert 24-hour time ("HH:mm") to "HH:mm:00.000" for Strapi
+	useEffect(() => {
+		if (activeStep === 4 && sigCanvasRef.current) {
+			const canvas = sigCanvasRef.current.getCanvas();
+			const ratio = Math.max(window.devicePixelRatio || 1, 1);
+			canvas.width = canvas.offsetWidth * ratio;
+			canvas.height = canvas.offsetHeight * ratio;
+			canvas.getContext("2d")?.scale(ratio, ratio);
+		}
+	}, [activeStep]);
+
+	const clearSignature = () => {
+		if (sigCanvasRef.current) {
+			sigCanvasRef.current.clear();
+		}
+	};
+
+	const saveSignatureToFormData = () => {
+		if (sigCanvasRef.current) {
+			return sigCanvasRef.current.toDataURL();
+		}
+		return null;
+	};
+
+	type FormFieldPath =
+		| "name"
+		| "coOfficial"
+		| "team1.text"
+		| "team1.color"
+		| "team2.text"
+		| "team2.color"
+		| "date"
+		| "time"
+		| "venue"
+		| "personOnReport"
+		| "allegations"
+		| "summary"
+		| "declarationConfirmed";
+
+	const stepFields: Record<number, FormFieldPath[]> = {
+		1: ["name", "coOfficial"],
+		2: ["team1.text", "team1.color", "team2.text", "team2.color"],
+		3: ["date", "time", "venue", "personOnReport", "allegations", "summary"],
+		4: ["declarationConfirmed"],
+	};
+
+	const handleNext = async () => {
+		const fields = stepFields[activeStep];
+		if (fields) {
+			const valid = await trigger(fields);
+			if (!valid) return;
+		}
+		setActiveStep((prev) => prev + 1);
+	};
+
+	const handleBack = () => {
+		setActiveStep((prev) => prev - 1);
+	};
+
 	function toStrapiTimeFormat(time24: string): string {
 		if (!time24) return "";
 		return `${time24}:00.000`;
@@ -114,7 +167,6 @@ const RefereeTribunalReport = () => {
 				data.signature = signatureDataUrl;
 			}
 
-			// Transform data to match Strapi schema
 			const strapiData = {
 				name: data.name,
 				co_official: data.coOfficial,
@@ -159,7 +211,6 @@ const RefereeTribunalReport = () => {
 				});
 				setShowSpinner(false);
 				handleReset();
-
 			} else {
 				console.error("Failed to send data to Strapi.", response.data);
 				enqueueSnackbar("Failed to submit form", {
@@ -178,9 +229,441 @@ const RefereeTribunalReport = () => {
 	};
 
 	const handleReset = () => {
-		reset(); // Reset the form
-		clearSignature(); // Clear the signature canvas
+		reset();
+		clearSignature();
+		setActiveStep(0);
 	};
+
+	const renderStepContent = () => {
+		switch (activeStep) {
+			case 0:
+				return (
+					<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+						<Typography variant="h5" gutterBottom>
+							About This Form
+						</Typography>
+						<Typography variant="body1">
+							This form is used by referees to report incidents that occur during
+							Hills Raiders Basketball Association games. It is a formal record of
+							any conduct that may require review by the tribunal.
+						</Typography>
+						<Typography variant="body1">
+							Please complete all sections accurately and honestly. The information
+							you provide will be used by the tribunal to assess the incident and
+							determine any appropriate action.
+						</Typography>
+						<Alert severity="info">
+							<Typography variant="body2">
+								<strong>Before you begin, please ensure you have the following information ready:</strong>
+							</Typography>
+							<ul style={{ margin: "8px 0 0 0", paddingLeft: "20px" }}>
+								<li>Full names of both teams involved</li>
+								<li>Date, time, and venue of the incident</li>
+								<li>Name and/or number of the person on report</li>
+								<li>A clear summary of the facts</li>
+							</ul>
+						</Alert>
+						<Typography variant="body2" color="text.secondary">
+							This report will be submitted to the Hills Raiders Basketball
+							Association tribunal for review. Submitting a false or misleading
+							report may result in disciplinary action against the reporter.
+						</Typography>
+					</Box>
+				);
+
+			case 1:
+				return (
+					<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+						<Typography variant="h6" gutterBottom>
+							Reporter Details
+						</Typography>
+						<Controller
+							name="name"
+							control={control}
+							rules={{ required: "Name of reporter is required" }}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									label="Name of Reporter"
+									fullWidth
+									error={!!errors.name}
+									helperText={errors.name?.message}
+								/>
+							)}
+						/>
+						<Controller
+							name="coOfficial"
+							control={control}
+							rules={{ required: "Name of co-official is required" }}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									label="Name of Co-Official"
+									fullWidth
+									error={!!errors.coOfficial}
+									helperText={errors.coOfficial?.message}
+								/>
+							)}
+						/>
+					</Box>
+				);
+
+			case 2:
+				return (
+					<Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+						<Typography variant="h6" gutterBottom>
+							Team Information
+						</Typography>
+						<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+							<Typography variant="subtitle1" fontWeight="bold">
+								Team 1
+							</Typography>
+							<Box sx={{ display: "flex", gap: 2 }} className="break-2">
+								<Controller
+									name="team1.text"
+									control={control}
+									rules={{ required: "Team 1 name is required" }}
+									render={({ field }) => (
+										<TextField
+											{...field}
+											label="Team 1 Name"
+											fullWidth
+											error={!!errors.team1?.text}
+											helperText={errors.team1?.text?.message}
+										/>
+									)}
+								/>
+								<Controller
+									name="team1.color"
+									control={control}
+									rules={{ required: "Team 1 colour is required" }}
+									render={({ field }) => (
+										<FormControl fullWidth error={!!errors.team1?.color}>
+											<InputLabel id="team1-color-label">
+												Team 1 Colour
+											</InputLabel>
+											<Select
+												{...field}
+												labelId="team1-color-label"
+												label="Team 1 Colour"
+											>
+												{COLOUR_OPTIONS.map((opt) => (
+													<MenuItem key={opt.value} value={opt.value}>
+														{opt.label}
+													</MenuItem>
+												))}
+											</Select>
+											{errors.team1?.color && (
+												<Typography variant="caption" color="error">
+													{errors.team1.color.message}
+												</Typography>
+											)}
+										</FormControl>
+									)}
+								/>
+							</Box>
+						</Box>
+						<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+							<Typography variant="subtitle1" fontWeight="bold">
+								Team 2
+							</Typography>
+							<Box sx={{ display: "flex", gap: 2 }} className="break-2">
+								<Controller
+									name="team2.text"
+									control={control}
+									rules={{ required: "Team 2 name is required" }}
+									render={({ field }) => (
+										<TextField
+											{...field}
+											label="Team 2 Name"
+											fullWidth
+											error={!!errors.team2?.text}
+											helperText={errors.team2?.text?.message}
+										/>
+									)}
+								/>
+								<Controller
+									name="team2.color"
+									control={control}
+									rules={{ required: "Team 2 colour is required" }}
+									render={({ field }) => (
+										<FormControl fullWidth error={!!errors.team2?.color}>
+											<InputLabel id="team2-color-label">
+												Team 2 Colour
+											</InputLabel>
+											<Select
+												{...field}
+												labelId="team2-color-label"
+												label="Team 2 Colour"
+											>
+												{COLOUR_OPTIONS.map((opt) => (
+													<MenuItem key={opt.value} value={opt.value}>
+														{opt.label}
+													</MenuItem>
+												))}
+											</Select>
+											{errors.team2?.color && (
+												<Typography variant="caption" color="error">
+													{errors.team2.color.message}
+												</Typography>
+											)}
+										</FormControl>
+									)}
+								/>
+							</Box>
+						</Box>
+					</Box>
+				);
+
+			case 3:
+				return (
+					<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+						<Typography variant="h6" gutterBottom>
+							Incident Details
+						</Typography>
+
+						{/* Date and Time */}
+						<Box sx={{ display: "flex", gap: 2 }} className="break-2">
+							<Controller
+								name="date"
+								control={control}
+								rules={{ required: "Date is required" }}
+								render={({ field }) => (
+									<TextField
+										{...field}
+										label="Date"
+										type="date"
+										fullWidth
+										InputLabelProps={{ shrink: true }}
+										error={!!errors.date}
+										helperText={errors.date?.message}
+									/>
+								)}
+							/>
+							<Controller
+								name="time"
+								control={control}
+								rules={{ required: "Time is required" }}
+								render={({ field }) => (
+									<TextField
+										{...field}
+										label="Time"
+										type="time"
+										fullWidth
+										InputLabelProps={{ shrink: true }}
+										error={!!errors.time}
+										helperText={errors.time?.message}
+									/>
+								)}
+							/>
+						</Box>
+
+						{/* Venue */}
+						<Controller
+							name="venue"
+							control={control}
+							rules={{ required: "Venue is required" }}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									label="Venue"
+									fullWidth
+									error={!!errors.venue}
+									helperText={errors.venue?.message}
+								/>
+							)}
+						/>
+
+						{/* Person on Report */}
+						<Controller
+							name="personOnReport"
+							control={control}
+							rules={{ required: "Name/number of person on report is required" }}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									label="Name/Number of Person on Report"
+									fullWidth
+									error={!!errors.personOnReport}
+									helperText={errors.personOnReport?.message}
+								/>
+							)}
+						/>
+
+						{/* Allegations */}
+						<FormControl
+							component="fieldset"
+							error={!!errors.allegations}
+						>
+							<Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+								Check the appropriate item(s)
+							</Typography>
+							<FormGroup>
+								{ALLEGATION_OPTIONS.map((allegation, index) => (
+									<Controller
+										key={index}
+										name="allegations"
+										control={control}
+										rules={{
+											validate: (value) =>
+												(value && value.length > 0) ||
+												"At least one allegation must be selected",
+										}}
+										render={({ field }) => (
+											<FormControlLabel
+												control={
+													<Checkbox
+														value={allegation}
+														checked={field.value?.includes(allegation)}
+														onChange={(e) => {
+															const value = e.target.value;
+															const checked = e.target.checked;
+															field.onChange(
+																checked
+																	? [...(field.value || []), value]
+																	: field.value.filter(
+																		(v: string) => v !== value
+																	)
+															);
+														}}
+													/>
+												}
+												label={allegation}
+											/>
+										)}
+									/>
+								))}
+							</FormGroup>
+							{errors.allegations && (
+								<Typography variant="caption" color="error">
+									{errors.allegations.message}
+								</Typography>
+							)}
+						</FormControl>
+
+						{/* Summary of Facts */}
+						<Controller
+							name="summary"
+							control={control}
+							rules={{ required: "Summary of facts is required" }}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									label="Summary of the Facts"
+									multiline
+									minRows={6}
+									fullWidth
+									error={!!errors.summary}
+									helperText={errors.summary?.message}
+								/>
+							)}
+						/>
+
+						{/* Persons Notified */}
+						<Controller
+							name="personsNotified"
+							control={control}
+							render={({ field }) => (
+								<FormControlLabel
+									control={
+										<Checkbox
+											{...field}
+											checked={field.value}
+											onChange={(e) =>
+												field.onChange(e.target.checked)
+											}
+										/>
+									}
+									label="Persons notified/not notified of this report"
+								/>
+							)}
+						/>
+					</Box>
+				);
+
+			case 4:
+				return (
+					<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+						<Typography variant="h6" gutterBottom>
+							Signature &amp; Declaration
+						</Typography>
+
+						{/* Signature */}
+						<Box>
+							<Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+								Signature of person making report
+							</Typography>
+							<SignatureCanvas
+								ref={sigCanvasRef}
+								penColor="black"
+								canvasProps={{
+									width: 500,
+									height: 200,
+									className: "sigCanvas",
+									style: {
+										border: "1px solid #ccc",
+										borderRadius: "4px",
+									},
+								}}
+							/>
+							<Button
+								type="button"
+								variant="outlined"
+								color="primary"
+								onClick={clearSignature}
+								sx={{ mt: 1 }}
+							>
+								Clear Signature
+							</Button>
+						</Box>
+
+						{/* Declaration */}
+						<Alert severity="warning" sx={{ mt: 1 }}>
+							<Typography variant="body2">
+								<strong>Declaration:</strong> By submitting this report, you declare
+								that the information provided is true and correct to the best of your
+								knowledge and belief. You understand that submitting a false or
+								misleading report to the Hills Raiders Basketball Association tribunal
+								may result in disciplinary action against you.
+							</Typography>
+						</Alert>
+						<Controller
+							name="declarationConfirmed"
+							control={control}
+							rules={{
+								validate: (value) =>
+									value === true ||
+									"You must confirm the declaration before submitting",
+							}}
+							render={({ field }) => (
+								<FormControlLabel
+									control={
+										<Checkbox
+											{...field}
+											checked={field.value}
+											onChange={(e) =>
+												field.onChange(e.target.checked)
+											}
+										/>
+									}
+									label="I confirm that the information in this report is true and correct to the best of my knowledge and belief."
+								/>
+							)}
+						/>
+						{errors.declarationConfirmed && (
+							<Typography variant="caption" color="error">
+								{errors.declarationConfirmed.message}
+							</Typography>
+						)}
+					</Box>
+				);
+
+			default:
+				return null;
+		}
+	};
+
+	const isLastStep = activeStep === STEPS.length - 1;
 
 	return (
 		<div className="panel">
@@ -191,373 +674,52 @@ const RefereeTribunalReport = () => {
 					type="button"
 					variant="contained"
 					color="error"
-					onClick={handleReset} // Reset the form
+					onClick={handleReset}
 				>
 					Reset
 				</Button>
 			</div>
 
+			<Stepper activeStep={activeStep} sx={{ mt: 2, mb: 4 }} alternativeLabel>
+				{STEPS.map((label) => (
+					<Step key={label}>
+						<StepLabel>{label}</StepLabel>
+					</Step>
+				))}
+			</Stepper>
+
 			<form onSubmit={handleSubmit(onSubmit)} className="form-container">
 				<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-					{/* Name Field */}
-					<Controller
-						name="name"
-						control={control}
-						rules={{ required: "Name is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Name of reporter"
-								fullWidth
-								error={!!errors.name}
-								helperText={errors.name?.message}
-							/>
-						)}
-					/>
+					{renderStepContent()}
 
-					{/* Co-official Field */}
-					<Controller
-						name="coOfficial"
-						control={control}
-						rules={{ required: "Co-official name is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Name of co-official"
-								fullWidth
-								error={!!errors.coOfficial}
-								helperText={errors.coOfficial?.message}
-							/>
-						)}
-					/>
-
-					{/* Team 1 */}
-					<Box sx={{ display: "flex", gap: 2 }} className="break-2">
-						<Controller
-							name="team1.text"
-							control={control}
-							rules={{ required: "Team 1 name is required" }}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Team 1"
-									error={!!errors.team1?.text}
-									helperText={errors.team1?.text?.message}
-								/>
-							)}
-						/>
-						<Controller
-							name="team1.color"
-							control={control}
-							rules={{ required: "Team 1 color is required" }}
-							render={({ field }) => (
-								<FormControl error={!!errors.team1?.color}>
-									<InputLabel id="team1-color-label">
-										Team 1 Colour
-									</InputLabel>
-									<Select
-										{...field}
-										labelId="team1-color-label"
-										label="Team 1 Colour"
-									>
-										<MenuItem value="red">Red</MenuItem>
-										<MenuItem value="blue">Blue</MenuItem>
-										<MenuItem value="green">Green</MenuItem>
-										<MenuItem value="yellow">
-											Yellow
-										</MenuItem>
-										<MenuItem value="orange">
-											Orange
-										</MenuItem>
-										<MenuItem value="purple">
-											Purple
-										</MenuItem>
-										<MenuItem value="pink">Pink</MenuItem>
-										<MenuItem value="brown">Brown</MenuItem>
-										<MenuItem value="black">Black</MenuItem>
-									</Select>
-									{errors.team1?.color && (
-										<p style={{ color: "red" }}>
-											{errors.team1.color.message}
-										</p>
-									)}
-								</FormControl>
-							)}
-						/>
-					</Box>
-
-					{/* Team 2 */}
-					<Box sx={{ display: "flex", gap: 2 }} className="break-2">
-						<Controller
-							name="team2.text"
-							control={control}
-							rules={{ required: "Team 2 name is required" }}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Team 2"
-									error={!!errors.team2?.text}
-									helperText={errors.team2?.text?.message}
-								/>
-							)}
-						/>
-						<Controller
-							name="team2.color"
-							control={control}
-							rules={{ required: "Team 2 color is required" }}
-							render={({ field }) => (
-								<FormControl error={!!errors.team2?.color}>
-									<InputLabel id="team2-color-label">
-										Team 2 Colour
-									</InputLabel>
-									<Select
-										{...field}
-										labelId="team2-color-label"
-										label="Team 2 Colour"
-									>
-										<MenuItem value="red">Red</MenuItem>
-										<MenuItem value="blue">Blue</MenuItem>
-										<MenuItem value="green">Green</MenuItem>
-										<MenuItem value="yellow">
-											Yellow
-										</MenuItem>
-										<MenuItem value="orange">
-											Orange
-										</MenuItem>
-										<MenuItem value="purple">
-											Purple
-										</MenuItem>
-										<MenuItem value="pink">Pink</MenuItem>
-										<MenuItem value="brown">Brown</MenuItem>
-										<MenuItem value="black">Black</MenuItem>
-									</Select>
-									{errors.team2?.color && (
-										<p style={{ color: "red" }}>
-											{errors.team2.color.message}
-										</p>
-									)}
-								</FormControl>
-							)}
-						/>
-					</Box>
-
-					{/* Date and Time */}
-					<Box sx={{ display: "flex", gap: 2 }} className="break-2">
-						<Controller
-							name="date"
-							control={control}
-							rules={{ required: "Date is required" }}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Date"
-									type="date"
-									InputLabelProps={{ shrink: true }}
-									error={!!errors.date}
-									helperText={errors.date?.message}
-								/>
-							)}
-						/>
-						<Controller
-							name="time"
-							control={control}
-							rules={{ required: "Time is required" }}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Time"
-									type="time"
-									InputLabelProps={{ shrink: true }}
-									error={!!errors.time}
-									helperText={errors.time?.message}
-								/>
-							)}
-						/>
-					</Box>
-
-					{/* Venue */}
-					<Controller
-						name="venue"
-						control={control}
-						rules={{ required: "Venue is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Venue"
-								fullWidth
-								error={!!errors.venue}
-								helperText={errors.venue?.message}
-							/>
-						)}
-					/>
-
-					{/* Person on Report */}
-					<Controller
-						name="personOnReport"
-						control={control}
-						rules={{ required: "Person on report is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Name/Number of Person on Report"
-								fullWidth
-								error={!!errors.personOnReport}
-								helperText={errors.personOnReport?.message}
-							/>
-						)}
-					/>
-
-					{/* Allegations */}
-					<FormControl
-						component="fieldset"
-						error={!!errors.allegations}
-					>
-						<h4>Check the appropriate item(s)</h4>
-						<FormGroup>
-							{[
-								"Disputed decisions of officials or breached code of conduct.",
-								"Used abusive, threatening, obscene language or gestures.",
-								"Acted in an unsportsmanlike manner in or around the stadium, including damage to property.",
-								"Attempted to trip, strike, push, elbow or kick player/official.",
-								"Tripped, punched, slapped, pushed, elbowed, kicked or spat at a player/official.",
-								"Participated in basketball activities whilst suspended.",
-								"Engaged in conduct likely to bring the game into disrepute.",
-								"Deliberately did an act endangering safety/health of players/spectators/officials.",
-							].map((allegation, index) => (
-								<Controller
-									key={index}
-									name="allegations"
-									control={control}
-									rules={{
-										required:
-											"At least one allegation must be selected",
-									}}
-									render={({ field }) => (
-										<FormControlLabel
-											control={
-												<Checkbox
-													{...field}
-													value={allegation}
-													checked={field.value?.includes(
-														allegation
-													)}
-													onChange={(e) => {
-														const value =
-															e.target.value;
-														const checked =
-															e.target.checked;
-														field.onChange(
-															checked
-																? [
-																	...(field.value ||
-																		[]),
-																	value,
-																]
-																: field.value.filter(
-																	(
-																		v: string
-																	) =>
-																		v !==
-																		value
-																)
-														);
-													}}
-												/>
-											}
-											label={allegation}
-										/>
-									)}
-								/>
-							))}
-						</FormGroup>
-						{errors.allegations && (
-							<p style={{ color: "red" }}>
-								{errors.allegations.message}
-							</p>
-						)}
-					</FormControl>
-
-					{/* Summary of Facts */}
-					<Controller
-						name="summary"
-						control={control}
-						rules={{ required: "Summary is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Summary of the Facts"
-								multiline
-								minRows={6}
-								fullWidth
-								error={!!errors.summary}
-								helperText={errors.summary?.message}
-							/>
-						)}
-					/>
-
-					{/* Checkbox for Persons Notified */}
-					<Controller
-						name="personsNotified"
-						control={control}
-						render={({ field }) => (
-							<FormControlLabel
-								control={
-									<Checkbox
-										{...field}
-										checked={field.value}
-										onChange={(e) =>
-											field.onChange(e.target.checked)
-										}
-									/>
-								}
-								label="Persons notified/not notified of this report"
-							/>
-						)}
-					/>
-
-					{/* Signature Field */}
-					<Box>
-						<h4>Signature of person making report</h4>
-						<SignatureCanvas
-							ref={sigCanvasRef}
-							penColor="black"
-							canvasProps={{
-								width: 500,
-								height: 200,
-								className: "sigCanvas",
-								style: {
-									border: "1px solid #ccc",
-									borderRadius: "4px",
-								},
-							}}
-						/>
+					<div className="panel-footer" style={{ marginTop: "16px" }}>
 						<Button
 							type="button"
 							variant="outlined"
 							color="primary"
-							onClick={clearSignature}
-							sx={{ mt: 1 }}
+							onClick={activeStep === 0 ? () => navigate("/") : handleBack}
 						>
-							Clear Signature
+							{activeStep === 0 ? "Cancel" : "Previous"}
 						</Button>
-					</Box>
-					<div className="panel-footer">
-						{/* Submit Button */}
-						<Button
-							type="button"
-							variant="outlined"
-							color="primary"
-							onClick={() => navigate("/")} // Reset the formq
-						>
-							Cancel
-						</Button>
-						<Button
-							type="submit"
-							variant="contained"
-							color="primary"
-						>
-							Submit
-						</Button>
+
+						{isLastStep ? (
+							<Button
+								type="submit"
+								variant="contained"
+								color="primary"
+							>
+								Submit
+							</Button>
+						) : (
+							<Button
+								type="button"
+								variant="contained"
+								color="primary"
+								onClick={handleNext}
+							>
+								Next
+							</Button>
+						)}
 					</div>
 				</Box>
 			</form>

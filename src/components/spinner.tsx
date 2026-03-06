@@ -1,11 +1,5 @@
-import { useState, CSSProperties, useEffect } from "react";
+import { useEffect } from "react";
 import { SyncLoader } from "react-spinners";
-
-const override: CSSProperties = {
-    display: "block",
-    margin: "0 auto",
-    borderColor: "red",
-};
 
 type SpinnerProps = {
     loading?: boolean;
