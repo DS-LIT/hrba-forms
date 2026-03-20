@@ -1,139 +1,280 @@
-import React, { useRef, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import React, { useRef, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import {
-	TextField,
 	Button,
 	Box,
-	MenuItem,
-	Select,
-	InputLabel,
-	FormControl,
-	FormGroup,
-	FormControlLabel,
-	Checkbox,
+	Stepper,
+	Step,
+	StepLabel,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import axios from "axios";
 import SignatureCanvas from "react-signature-canvas";
-import Spinner from "../../components/spinner"; // Adjust the import based on your project structure
+import Spinner from "../../components/spinner";
+import StepIntroduction from "./component/StepIntroduction";
+import StepReporterDetails from "./component/StepReporterDetails";
+import StepGameAndTeamInfo from "./component/StepGameAndTeamInfo";
+import StepIncidentDetails from "./component/StepIncidentDetails";
+import StepSignatureDeclaration from "./component/StepSignatureDeclaration";
+import { FormValues, FormFieldPath } from "./component/types";
 
-interface RefereeTribunalReportForm {
-	name: string;
-	coOfficial: string;
-	team1: {
-		text: string;
-		color: string;
-	};
-	team2: {
-		text: string;
-		color: string;
-	};
-	date: string;
-	time: string;
-	venue: string;
-	personOnReport: string;
-	allegations: string[];
-	summary: string;
-	personsNotified: boolean;
-}
+const STEPS = [
+	"Introduction",
+	"Reporter Details",
+	"Game & Team Information",
+	"Incident Details",
+	"Signature & Declaration",
+];
+
+const VENUE_HISTORY_KEY = "refereeTribunalVenueHistory";
 
 const RefereeTribunalReport = () => {
 	const navigate = useNavigate();
 	const sigCanvasRef = useRef<SignatureCanvas>(null);
 	const { enqueueSnackbar } = useSnackbar();
-	const [showSpinner, setShowSpinner] = React.useState<boolean>(false);
-
-	useEffect(() => {
-		if (sigCanvasRef.current) {
-			const canvas = sigCanvasRef.current.getCanvas();
-			const ratio = Math.max(window.devicePixelRatio || 1, 1);
-			canvas.width = canvas.offsetWidth * ratio;
-			canvas.height = canvas.offsetHeight * ratio;
-			canvas.getContext("2d")?.scale(ratio, ratio);
-		}
-	}, []);
-
-	const clearSignature = () => {
-		if (sigCanvasRef.current) {
-			sigCanvasRef.current.clear(); // Clear the canvas
-		}
-	};
-
-	const saveSignatureToFormData = () => {
-		if (sigCanvasRef.current) {
-			const signatureDataUrl = sigCanvasRef.current.toDataURL();
-			return signatureDataUrl;
-		}
-		return null;
-	};
+	const [showSpinner, setShowSpinner] = useState<boolean>(false);
+	const [activeStep, setActiveStep] = useState<number>(0);
+	const [venueOptions, setVenueOptions] = useState<string[]>([]);
 
 	const today = new Date().toISOString().slice(0, 10);
 	const now = new Date();
 	const pad = (n: number) => n.toString().padStart(2, "0");
 	const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
+	// Track whether the user clicked "Submit & Duplicate" vs plain "Submit"
+	const isDuplicateRef = useRef(false);
+
 	const {
 		handleSubmit,
 		control,
 		reset,
+		trigger,
+		getValues,
+		watch,
+		clearErrors,
+		setError,
 		formState: { errors },
-	} = useForm({
+	} = useForm<FormValues>({
 		defaultValues: {
 			name: "",
+			supervisor: "",
 			coOfficial: "",
-			team1: {
-				text: "",
-				color: "red", // Default color
-			},
-			team2: {
-				text: "",
-				color: "blue", // Default color
-			},
+			team1: { text: "", color: "red" },
+			team2: { text: "", color: "blue" },
 			date: today,
 			time: currentTime,
 			venue: "",
-			personOnReport: "",
-			allegations: [] as string[],
+			court: "",
+			reportedPersonsName: "",
+			reportedPersonsNumber: "",
+			reportedPersonsTeam: "",
+			allegations: [],
+			summaryprior: "",
 			summary: "",
-			personsNotified: false,
+			summaryafter: "",
+			witness: "",
+			staffWatching: false,
+			declarationConfirmed: false,
 		},
 	});
 
-	// Helper to convert 24-hour time ("HH:mm") to "HH:mm:00.000" for Strapi
+	useEffect(() => {
+		if (activeStep === 4 && sigCanvasRef.current) {
+			const canvas = sigCanvasRef.current.getCanvas();
+			const ratio = Math.max(window.devicePixelRatio || 1, 1);
+			canvas.width = canvas.offsetWidth * ratio;
+			canvas.height = canvas.offsetHeight * ratio;
+			canvas.getContext("2d")?.scale(ratio, ratio);
+		}
+	}, [activeStep]);
+
+
+	// Warn user if they try to leave the page with unsaved form data
+	useEffect(() => {
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			const isDirty = Object.values(getValues()).some((value) => {
+				if (Array.isArray(value)) return value.length > 0;
+				if (typeof value === "string") return value.trim().length > 0;
+				if (typeof value === "boolean") return value === true;
+				if (typeof value === "object" && value !== null) {
+					return Object.values(value).some((v) =>
+						typeof v === "string" ? v.trim().length > 0 : v
+					);
+				}
+				return false;
+			});
+
+			if (isDirty && activeStep > 0) {
+				e.preventDefault();
+				e.returnValue = "";
+				return "";
+			}
+		};
+
+		window.addEventListener("beforeunload", handleBeforeUnload);
+		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+	}, [getValues, activeStep]);
+
+	useEffect(() => {
+		try {
+			const saved = localStorage.getItem(VENUE_HISTORY_KEY);
+			if (!saved) return;
+			const parsed = JSON.parse(saved);
+			if (Array.isArray(parsed)) {
+				setVenueOptions(parsed.filter((v) => typeof v === "string"));
+			} else if (typeof parsed === "string" && parsed.trim()) {
+				setVenueOptions([parsed.trim()]);
+			}
+		} catch (err) {
+			console.warn("Unable to load venue history", err);
+		}
+	}, []);
+
+	const saveVenueToHistory = (venue: string) => {
+		const trimmedVenue = venue.trim();
+		if (!trimmedVenue) return;
+
+		setVenueOptions((prev) => {
+			const deduped = prev.filter(
+				(v) => v.toLowerCase() !== trimmedVenue.toLowerCase()
+			);
+			const next = [trimmedVenue, ...deduped].slice(0, 10);
+			localStorage.setItem(VENUE_HISTORY_KEY, JSON.stringify(next));
+			return next;
+		});
+	};
+
+	const clearSignature = () => {
+		if (sigCanvasRef.current) {
+			sigCanvasRef.current.clear();
+		}
+	};
+
+	const saveSignatureToFormData = () => {
+		if (sigCanvasRef.current) {
+			return sigCanvasRef.current.toDataURL();
+		}
+		return null;
+	};
+
+	const stepFields: Record<number, FormFieldPath[]> = {
+		1: ["name", "coOfficial", "supervisor"],
+		2: [
+			"team1.text",
+			"team1.color",
+			"team2.text",
+			"team2.color",
+			"date",
+			"time",
+			"venue",
+			"court",
+		],
+		3: [
+			"reportedPersonsName",
+			"reportedPersonsNumber",
+			"reportedPersonsTeam",
+			"allegations",
+			"summaryprior",
+			"summary",
+			"summaryafter",
+		],
+		4: ["declarationConfirmed"],
+	};
+
+	const handleRequiredFieldChange = (
+		fieldName: FormFieldPath,
+		fieldOnChange: (value: any) => void,
+		requiredMessage: string
+	) => {
+		return (eventOrValue: any) => {
+			fieldOnChange(eventOrValue);
+
+			const rawValue =
+				typeof eventOrValue === "string"
+					? eventOrValue
+					: eventOrValue?.target?.value;
+			const hasValue =
+				typeof rawValue === "string"
+					? rawValue.trim().length > 0
+					: Boolean(rawValue);
+
+			if (hasValue) {
+				clearErrors(fieldName);
+			} else {
+				setError(fieldName, {
+					type: "required",
+					message: requiredMessage,
+				});
+			}
+		};
+	};
+
+	const team1Text = watch("team1.text");
+	const team2Text = watch("team2.text");
+	const reportedPersonTeamOptions = [team1Text, team2Text]
+		.map((teamName) => teamName?.trim())
+		.filter(
+			(teamName, index, allTeamNames): teamName is string =>
+				Boolean(teamName) && allTeamNames.indexOf(teamName) === index
+		);
+
+
+	const handleNext = async () => {
+		const fields = stepFields[activeStep] ?? [];
+		if (fields.length > 0) {
+			const valid = await trigger(fields);
+			if (!valid) return;
+		}
+		setActiveStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+	};
+
+	const handleFormSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		// Only validate the current step (step 4) before submitting
+		const fields = stepFields[activeStep] ?? [];
+		if (fields.length > 0) {
+			const valid = await trigger(fields);
+			if (!valid) return;
+		}
+		// If validation passes, submit the form
+		handleSubmit(onSubmit)(e);
+	};
+
+	const handleBack = () => {
+		setActiveStep((prev) => Math.max(prev - 1, 0));
+	};
+
 	function toStrapiTimeFormat(time24: string): string {
 		if (!time24) return "";
 		return `${time24}:00.000`;
 	}
 
-	const onSubmit = async (data: any) => {
+	const onSubmit = async (data: FormValues) => {
 		setShowSpinner(true);
 		try {
 			const signatureDataUrl = saveSignatureToFormData();
-			if (signatureDataUrl) {
-				data.signature = signatureDataUrl;
-			}
 
-			// Transform data to match Strapi schema
 			const strapiData = {
 				name: data.name,
-				co_official: data.coOfficial,
-				team_1_name: data.team1.text,
-				team_1_colour:
-					data.team1.color.charAt(0).toUpperCase() +
-					data.team1.color.slice(1),
-				team_2_name: data.team2.text,
-				team_2_colour:
-					data.team2.color.charAt(0).toUpperCase() +
-					data.team2.color.slice(1),
+				coOfficial: data.coOfficial,
+				supervisor: data.supervisor,
+				team1: data.team1,
+				team2: data.team2,
 				date: data.date,
 				time: toStrapiTimeFormat(data.time),
 				venue: data.venue,
-				person_on_report: data.personOnReport,
+				court: data.court,
+				reportedPersonsName: data.reportedPersonsName,
+				reportedPersonsNumber: data.reportedPersonsNumber,
+				reportedPersonsTeam: data.reportedPersonsTeam,
+				summaryprior: data.summaryprior,
 				summary: data.summary,
-				person_notified: data.personsNotified,
-				signature: data.signature,
+				summaryafter: data.summaryafter,
+				witness: data.witness,
+				staffWatching: data.staffWatching,
 				allegations: data.allegations,
+				signature: signatureDataUrl,
 			};
 
 			const isProduction = process.env.NODE_ENV === "production";
@@ -152,24 +293,39 @@ const RefereeTribunalReport = () => {
 			);
 
 			if (response.status === 200 || response.status === 201) {
-				console.log("Form data sent to Strapi successfully.");
+				saveVenueToHistory(data.venue);
 				enqueueSnackbar("Form submission successful", {
 					variant: "success",
 					style: { right: "20px" },
 				});
 				setShowSpinner(false);
-				handleReset();
-
+				if (isDuplicateRef.current) {
+					isDuplicateRef.current = false;
+					handleDuplicate();
+				} else {
+					handleReset();
+				}
 			} else {
 				console.error("Failed to send data to Strapi.", response.data);
+				isDuplicateRef.current = false;
 				enqueueSnackbar("Failed to submit form", {
 					variant: "warning",
 				});
 				setShowSpinner(false);
 			}
 		} catch (error) {
-			console.error("Error submitting form:", error);
-			enqueueSnackbar("Failed to submit form", {
+			const serverErrorMessage = axios.isAxiosError(error)
+				? error.response?.data?.error?.message ??
+				error.response?.data?.message ??
+				`Request failed with status code ${error.response?.status ?? "unknown"}`
+				: "Unknown error";
+			console.error("Error submitting form:", {
+				message: serverErrorMessage,
+				response: axios.isAxiosError(error) ? error.response?.data : undefined,
+				error,
+			});
+			isDuplicateRef.current = false;
+			enqueueSnackbar(`Failed to submit form: ${serverErrorMessage}`, {
 				variant: "warning",
 				style: { float: "right" },
 			});
@@ -178,9 +334,43 @@ const RefereeTribunalReport = () => {
 	};
 
 	const handleReset = () => {
-		reset(); // Reset the form
-		clearSignature(); // Clear the signature canvas
+		reset();
+		clearSignature();
+		setActiveStep(0);
 	};
+
+	/**
+	 * After a successful "Submit & Duplicate", keep all form values except
+	 * clear the person-on-report field and the signature/declaration so the
+	 * user can immediately fill in the next person's name and re-sign.
+	 */
+	const handleDuplicate = () => {
+		const current = getValues();
+		reset({
+			...current,
+			reportedPersonsName: "",
+			reportedPersonsNumber: "",
+			reportedPersonsTeam: "",
+			declarationConfirmed: false,
+		});
+		clearSignature();
+		setActiveStep(3);
+	};
+
+	const stepProps = { control, errors, handleRequiredFieldChange };
+
+	const renderStepContent = () => {
+		switch (activeStep) {
+			case 0: return <StepIntroduction />;
+			case 1: return <StepReporterDetails {...stepProps} />;
+			case 2: return <StepGameAndTeamInfo {...stepProps} venueOptions={venueOptions} />;
+			case 3: return <StepIncidentDetails {...stepProps} reportedPersonTeamOptions={reportedPersonTeamOptions} />;
+			case 4: return <StepSignatureDeclaration control={control} errors={errors} sigCanvasRef={sigCanvasRef} clearSignature={clearSignature} />;
+			default: return null;
+		}
+	};
+
+	const isLastStep = activeStep === STEPS.length - 1;
 
 	return (
 		<div className="panel">
@@ -191,376 +381,72 @@ const RefereeTribunalReport = () => {
 					type="button"
 					variant="contained"
 					color="error"
-					onClick={handleReset} // Reset the form
+					onClick={handleReset}
 				>
 					Reset
 				</Button>
 			</div>
 
-			<form onSubmit={handleSubmit(onSubmit)} className="form-container">
+			<Stepper activeStep={activeStep} sx={{ mt: 2, mb: 4 }} alternativeLabel>
+				{STEPS.map((label) => (
+					<Step key={label}>
+						<StepLabel>{label}</StepLabel>
+					</Step>
+				))}
+			</Stepper>
+
+			<form onSubmit={handleFormSubmit} className="form-container">
 				<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-					{/* Name Field */}
-					<Controller
-						name="name"
-						control={control}
-						rules={{ required: "Name is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Name of reporter"
-								fullWidth
-								error={!!errors.name}
-								helperText={errors.name?.message}
-							/>
-						)}
-					/>
+					{renderStepContent()}
 
-					{/* Co-official Field */}
-					<Controller
-						name="coOfficial"
-						control={control}
-						rules={{ required: "Co-official name is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Name of co-official"
-								fullWidth
-								error={!!errors.coOfficial}
-								helperText={errors.coOfficial?.message}
-							/>
-						)}
-					/>
-
-					{/* Team 1 */}
-					<Box sx={{ display: "flex", gap: 2 }} className="break-2">
-						<Controller
-							name="team1.text"
-							control={control}
-							rules={{ required: "Team 1 name is required" }}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Team 1"
-									error={!!errors.team1?.text}
-									helperText={errors.team1?.text?.message}
-								/>
-							)}
-						/>
-						<Controller
-							name="team1.color"
-							control={control}
-							rules={{ required: "Team 1 color is required" }}
-							render={({ field }) => (
-								<FormControl error={!!errors.team1?.color}>
-									<InputLabel id="team1-color-label">
-										Team 1 Colour
-									</InputLabel>
-									<Select
-										{...field}
-										labelId="team1-color-label"
-										label="Team 1 Colour"
-									>
-										<MenuItem value="red">Red</MenuItem>
-										<MenuItem value="blue">Blue</MenuItem>
-										<MenuItem value="green">Green</MenuItem>
-										<MenuItem value="yellow">
-											Yellow
-										</MenuItem>
-										<MenuItem value="orange">
-											Orange
-										</MenuItem>
-										<MenuItem value="purple">
-											Purple
-										</MenuItem>
-										<MenuItem value="pink">Pink</MenuItem>
-										<MenuItem value="brown">Brown</MenuItem>
-										<MenuItem value="black">Black</MenuItem>
-									</Select>
-									{errors.team1?.color && (
-										<p style={{ color: "red" }}>
-											{errors.team1.color.message}
-										</p>
-									)}
-								</FormControl>
-							)}
-						/>
-					</Box>
-
-					{/* Team 2 */}
-					<Box sx={{ display: "flex", gap: 2 }} className="break-2">
-						<Controller
-							name="team2.text"
-							control={control}
-							rules={{ required: "Team 2 name is required" }}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Team 2"
-									error={!!errors.team2?.text}
-									helperText={errors.team2?.text?.message}
-								/>
-							)}
-						/>
-						<Controller
-							name="team2.color"
-							control={control}
-							rules={{ required: "Team 2 color is required" }}
-							render={({ field }) => (
-								<FormControl error={!!errors.team2?.color}>
-									<InputLabel id="team2-color-label">
-										Team 2 Colour
-									</InputLabel>
-									<Select
-										{...field}
-										labelId="team2-color-label"
-										label="Team 2 Colour"
-									>
-										<MenuItem value="red">Red</MenuItem>
-										<MenuItem value="blue">Blue</MenuItem>
-										<MenuItem value="green">Green</MenuItem>
-										<MenuItem value="yellow">
-											Yellow
-										</MenuItem>
-										<MenuItem value="orange">
-											Orange
-										</MenuItem>
-										<MenuItem value="purple">
-											Purple
-										</MenuItem>
-										<MenuItem value="pink">Pink</MenuItem>
-										<MenuItem value="brown">Brown</MenuItem>
-										<MenuItem value="black">Black</MenuItem>
-									</Select>
-									{errors.team2?.color && (
-										<p style={{ color: "red" }}>
-											{errors.team2.color.message}
-										</p>
-									)}
-								</FormControl>
-							)}
-						/>
-					</Box>
-
-					{/* Date and Time */}
-					<Box sx={{ display: "flex", gap: 2 }} className="break-2">
-						<Controller
-							name="date"
-							control={control}
-							rules={{ required: "Date is required" }}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Date"
-									type="date"
-									InputLabelProps={{ shrink: true }}
-									error={!!errors.date}
-									helperText={errors.date?.message}
-								/>
-							)}
-						/>
-						<Controller
-							name="time"
-							control={control}
-							rules={{ required: "Time is required" }}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Time"
-									type="time"
-									InputLabelProps={{ shrink: true }}
-									error={!!errors.time}
-									helperText={errors.time?.message}
-								/>
-							)}
-						/>
-					</Box>
-
-					{/* Venue */}
-					<Controller
-						name="venue"
-						control={control}
-						rules={{ required: "Venue is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Venue"
-								fullWidth
-								error={!!errors.venue}
-								helperText={errors.venue?.message}
-							/>
-						)}
-					/>
-
-					{/* Person on Report */}
-					<Controller
-						name="personOnReport"
-						control={control}
-						rules={{ required: "Person on report is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Name/Number of Person on Report"
-								fullWidth
-								error={!!errors.personOnReport}
-								helperText={errors.personOnReport?.message}
-							/>
-						)}
-					/>
-
-					{/* Allegations */}
-					<FormControl
-						component="fieldset"
-						error={!!errors.allegations}
-					>
-						<h4>Check the appropriate item(s)</h4>
-						<FormGroup>
-							{[
-								"Disputed decisions of officials or breached code of conduct.",
-								"Used abusive, threatening, obscene language or gestures.",
-								"Acted in an unsportsmanlike manner in or around the stadium, including damage to property.",
-								"Attempted to trip, strike, push, elbow or kick player/official.",
-								"Tripped, punched, slapped, pushed, elbowed, kicked or spat at a player/official.",
-								"Participated in basketball activities whilst suspended.",
-								"Engaged in conduct likely to bring the game into disrepute.",
-								"Deliberately did an act endangering safety/health of players/spectators/officials.",
-							].map((allegation, index) => (
-								<Controller
-									key={index}
-									name="allegations"
-									control={control}
-									rules={{
-										required:
-											"At least one allegation must be selected",
-									}}
-									render={({ field }) => (
-										<FormControlLabel
-											control={
-												<Checkbox
-													{...field}
-													value={allegation}
-													checked={field.value?.includes(
-														allegation
-													)}
-													onChange={(e) => {
-														const value =
-															e.target.value;
-														const checked =
-															e.target.checked;
-														field.onChange(
-															checked
-																? [
-																	...(field.value ||
-																		[]),
-																	value,
-																]
-																: field.value.filter(
-																	(
-																		v: string
-																	) =>
-																		v !==
-																		value
-																)
-														);
-													}}
-												/>
-											}
-											label={allegation}
-										/>
-									)}
-								/>
-							))}
-						</FormGroup>
-						{errors.allegations && (
-							<p style={{ color: "red" }}>
-								{errors.allegations.message}
-							</p>
-						)}
-					</FormControl>
-
-					{/* Summary of Facts */}
-					<Controller
-						name="summary"
-						control={control}
-						rules={{ required: "Summary is required" }}
-						render={({ field }) => (
-							<TextField
-								{...field}
-								label="Summary of the Facts"
-								multiline
-								minRows={6}
-								fullWidth
-								error={!!errors.summary}
-								helperText={errors.summary?.message}
-							/>
-						)}
-					/>
-
-					{/* Checkbox for Persons Notified */}
-					<Controller
-						name="personsNotified"
-						control={control}
-						render={({ field }) => (
-							<FormControlLabel
-								control={
-									<Checkbox
-										{...field}
-										checked={field.value}
-										onChange={(e) =>
-											field.onChange(e.target.checked)
-										}
-									/>
+					<div className="panel-footer" style={{ marginTop: "16px" }}>
+						<Button
+							type="button"
+							variant="outlined"
+							color="primary"
+							onClick={() => {
+								if (activeStep === 0) {
+									navigate("/");
+								} else {
+									handleBack();
 								}
-								label="Persons notified/not notified of this report"
-							/>
-						)}
-					/>
-
-					{/* Signature Field */}
-					<Box>
-						<h4>Signature of person making report</h4>
-						<SignatureCanvas
-							ref={sigCanvasRef}
-							penColor="black"
-							canvasProps={{
-								width: 500,
-								height: 200,
-								className: "sigCanvas",
-								style: {
-									border: "1px solid #ccc",
-									borderRadius: "4px",
-								},
 							}}
-						/>
-						<Button
-							type="button"
-							variant="outlined"
-							color="primary"
-							onClick={clearSignature}
-							sx={{ mt: 1 }}
 						>
-							Clear Signature
+							{activeStep === 0 ? "Cancel" : "Previous"}
 						</Button>
-					</Box>
-					<div className="panel-footer">
-						{/* Submit Button */}
-						<Button
-							type="button"
-							variant="outlined"
-							color="primary"
-							onClick={() => navigate("/")} // Reset the formq
-						>
-							Cancel
-						</Button>
-						<Button
-							type="submit"
-							variant="contained"
-							color="primary"
-						>
-							Submit
-						</Button>
+
+						{isLastStep ? (
+							<Box sx={{ display: "flex", gap: 1 }}>
+								<Button
+									type="submit"
+									variant="outlined"
+									color="primary"
+								>
+									Submit
+								</Button>
+								<Button
+									type="submit"
+									variant="contained"
+									color="primary"
+									onClick={() => { isDuplicateRef.current = true; }}
+								>
+									Submit &amp; Duplicate
+								</Button>
+							</Box>
+						) : (
+							<Button
+								type="button"
+								variant="contained"
+								color="primary"
+								onClick={handleNext}
+							>
+								Next
+							</Button>
+						)}
 					</div>
 				</Box>
 			</form>
+
 		</div>
 	);
 };
