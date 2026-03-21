@@ -200,7 +200,12 @@ const ReimbursementForm = () => {
                     <Controller
                         name="firstName"
                         control={control}
-                        rules={{ required: "First name is required" }}
+                        rules={{
+                            required: "First name is required",
+                            validate: (value) =>
+                                (value?.trim().length ?? 0) > 0 ||
+                                "First name cannot be blank",
+                        }}
                         render={({ field }) => (
                             <TextField
                                 {...field}
@@ -214,7 +219,12 @@ const ReimbursementForm = () => {
                     <Controller
                         name="lastName"
                         control={control}
-                        rules={{ required: "Last name is required" }}
+                        rules={{
+                            required: "Last name is required",
+                            validate: (value) =>
+                                (value?.trim().length ?? 0) > 0 ||
+                                "Last name cannot be blank",
+                        }}
                         render={({ field }) => (
                             <TextField
                                 {...field}
