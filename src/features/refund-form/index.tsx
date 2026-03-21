@@ -94,7 +94,10 @@ const ReimbursementForm = () => {
     }, [playersAge]);
 
     useEffect(() => {
-        if (!isUnder18) {
+        if (isUnder18) {
+            // Clear contactName when switching to under-18; field becomes Parent/Guardian
+            setValue("contactName", "");
+        } else {
             setValue("contactName", `${firstName} ${lastName}`); // Prefill contactName with full name
         }
     }, [firstName, lastName, isUnder18, setValue]);
