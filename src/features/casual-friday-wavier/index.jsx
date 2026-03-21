@@ -15,13 +15,15 @@ import SignatureCanvas from 'react-signature-canvas';
 import Spinner from '../../components/spinner'
 
 
-interface CFWavierFormProps {
+interface PIDJuniorsProps {
+    gardianFullName: string;
     playerName: string;
+    dateOfBirth: string;
+    gardianSignature: string;
     date: string;
-    wavier: string;
 }
 
-const CFWavier = () => {
+const PIDJuniors = () => {
 
     const navigate = useNavigate();
     const { enqueueSnackbar } = useSnackbar();
@@ -65,8 +67,6 @@ const CFWavier = () => {
     }
 
     const onSubmit = async (data: any) => {
-        // If not under 18, ensure contactName is set to playerName
-        // TODO: Show spinner here if needed
         setShowSpinner(true);
 
         try {
@@ -79,13 +79,17 @@ const CFWavier = () => {
             // Transform data to match Strapi schema
             const strapiData = {
                 player_name: data.playerName,
+                date_of_birth: data.dateOfBirth,
+                gardian_full_name: data.gardianFullName,
+                signature: data.signature,
+
                 date: toStrapiTimeFormat(data.date),
             };
 
             const isProduction = process.env.NODE_ENV === "production";
 
             const response = await axios.post(
-                `${isProduction ? process.env.REACT_APP_API_URL : 'http://localhost:1337'}/api/reimbursement-forms`, // Update this endpoint as needed
+                `${isProduction ? process.env.REACT_APP_API_URL : 'http://localhost:1337'}/api/pid-juniors`, // Update this endpoint as needed
                 { data: strapiData },
                 {
                     headers: {
