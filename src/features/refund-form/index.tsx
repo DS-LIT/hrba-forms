@@ -16,7 +16,8 @@ import Spinner from '../../components/spinner'
 
 
 interface ReimbursementFormProps {
-    playerName: string;
+    firstName: string;
+    lastName: string;
     club: string;
     team: string;
     amount: number; // kept as number in interface; form stores string then converts
@@ -64,7 +65,8 @@ const ReimbursementForm = () => {
 
     const { handleSubmit, control, reset, formState: { errors }, setValue, watch } = useForm({
         defaultValues: {
-            playerName: "",
+            firstName: "",
+            lastName: "",
             club: "",
             team: "",
             amount: '',
@@ -80,8 +82,9 @@ const ReimbursementForm = () => {
         },
     });
 
-    // Watch playerName to prefill contactName if needed
-    const playerName = watch("playerName");
+    // Watch firstName and lastName to prefill contactName if needed
+    const firstName = watch("firstName");
+    const lastName = watch("lastName");
     const playersAge = watch("playersAge");
 
     // Update isUnder18 automatically whenever playersAge changes
@@ -91,10 +94,13 @@ const ReimbursementForm = () => {
     }, [playersAge]);
 
     useEffect(() => {
-        if (!isUnder18) {
-            setValue("contactName", playerName); // Prefill contactName with playerName
+        if (isUnder18) {
+            // Clear contactName when switching to under-18; field becomes Parent/Guardian
+            setValue("contactName", "");
+        } else {
+            setValue("contactName", `${firstName} ${lastName}`); // Prefill contactName with full name
         }
-    }, [playerName, isUnder18, setValue]);
+    }, [firstName, lastName, isUnder18, setValue]);
 
     function toStrapiTimeFormat(time24: string): string {
         if (!time24) return "";
@@ -115,7 +121,8 @@ const ReimbursementForm = () => {
 
             // Transform data to match Strapi schema
             const strapiData = {
-                player_name: data.playerName,
+                first_name: data.firstName,
+                last_name: data.lastName,
                 club_name: data.club,
                 team_name: data.team,
                 amount: parseFloat(data.amount) || 0,
@@ -191,23 +198,48 @@ const ReimbursementForm = () => {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="form-container">
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    {/* Player Name Field */}
+                <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+                    {/* First Name Field */}
                     <Controller
-                        name="playerName"
+                        name="firstName"
                         control={control}
-                        rules={{ required: "Player name is required" }}
+                        rules={{
+                            required: "First name is required",
+                            validate: (value) =>
+                                (value?.trim().length ?? 0) > 0 ||
+                                "First name cannot be blank",
+                        }}
                         render={({ field }) => (
                             <TextField
                                 {...field}
-                                label="Player Name"
+                                label="First Name"
                                 fullWidth
-                                error={!!errors.playerName}
-                                helperText={errors.playerName?.message}
+                                error={!!errors.firstName}
+                                helperText={errors.firstName?.message}
                             />
                         )}
                     />
-
+                    <Controller
+                        name="lastName"
+                        control={control}
+                        rules={{
+                            required: "Last name is required",
+                            validate: (value) =>
+                                (value?.trim().length ?? 0) > 0 ||
+                                "Last name cannot be blank",
+                        }}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                label="Last Name"
+                                fullWidth
+                                error={!!errors.lastName}
+                                helperText={errors.lastName?.message}
+                            />
+                        )}
+                    />
+                </Box>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     {/* Club Field */}
                     <Controller
                         name="club"
@@ -588,7 +620,7 @@ const ReimbursementForm = () => {
                 </div>
             </form>
 
-        </div>
+        </div >
     );
 };
 
