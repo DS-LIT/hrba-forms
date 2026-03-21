@@ -88,7 +88,7 @@ const AgeGroupExemptionForm = () => {
                 setAccessAllowed(false);
                 setAccessChecked(true);
             });
-    }, []);
+    }, [isProduction]);
 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [fileError, setFileError] = useState<string>("");

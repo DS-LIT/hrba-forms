@@ -1,18 +1,12 @@
-import { useState, CSSProperties, useEffect } from "react";
+import { useEffect } from "react";
 import { SyncLoader } from "react-spinners";
-
-const override: CSSProperties = {
-    display: "block",
-    margin: "0 auto",
-    borderColor: "red",
-};
 
 type SpinnerProps = {
     loading?: boolean;
     color?: string;
 };
 
-function Spinner({ loading = false, color = "#ffffff" }: SpinnerProps) {
+function Spinner({ loading = false, color = "var(--primary-color)" }: SpinnerProps) {
     useEffect(() => {
         if (loading) {
             document.body.style.overflow = "hidden";
@@ -42,7 +36,7 @@ function Spinner({ loading = false, color = "#ffffff" }: SpinnerProps) {
                 }}
             >
                 <SyncLoader
-                    color={"var(--primary-color)"}
+                    color={color}
                     loading={loading}
                     size={16}
                     aria-label="Loading Spinner"

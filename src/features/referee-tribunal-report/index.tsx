@@ -36,6 +36,7 @@ interface RefereeTribunalReportForm {
 	allegations: string[];
 	summary: string;
 	personsNotified: boolean;
+	signature?: string;
 }
 
 const RefereeTribunalReport = () => {
@@ -78,7 +79,7 @@ const RefereeTribunalReport = () => {
 		control,
 		reset,
 		formState: { errors },
-	} = useForm({
+	} = useForm<RefereeTribunalReportForm>({
 		defaultValues: {
 			name: "",
 			coOfficial: "",
@@ -106,7 +107,7 @@ const RefereeTribunalReport = () => {
 		return `${time24}:00.000`;
 	}
 
-	const onSubmit = async (data: any) => {
+	const onSubmit = async (data: RefereeTribunalReportForm) => {
 		setShowSpinner(true);
 		try {
 			const signatureDataUrl = saveSignatureToFormData();

@@ -4,16 +4,13 @@ import { useNavigate } from "react-router-dom";
 import {
     TextField,
     Button,
-    Box,
-    InputAdornment
+    Box
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import axios from "axios";
-import Divider from "../../components/divider";
 
 import SignatureCanvas from 'react-signature-canvas';
 import Spinner from '../../components/spinner'
-import e from "express";
 
 
 interface UniformExeptionFormProps {
@@ -23,7 +20,7 @@ interface UniformExeptionFormProps {
     dateOfBirth: string;
     registeredTeam: string;
     competitionAgeGroup: string;
-    contactNumber: number;
+    contactNumber: string;
     exemptionReason: string;
     signature: string;
     dateLodged: string
@@ -72,7 +69,7 @@ const UniformExeptionForm = () => {
                 setAccessChecked(true);
                 console.error("Error validating token:", err);
             });
-    }, []);
+    }, [isProduction]);
 
     useEffect(() => {
         if (sigCanvasRef.current) {
@@ -98,7 +95,7 @@ const UniformExeptionForm = () => {
         return null;
     };
 
-    const { handleSubmit, control, reset, formState: { errors }, setValue, watch } = useForm({
+    const { handleSubmit, control, reset, formState: { errors } } = useForm<UniformExeptionFormProps>({
         defaultValues: {
             season: "",
             fullName: "",
@@ -120,7 +117,7 @@ const UniformExeptionForm = () => {
         return `${time24}:00.000`;
     }
 
-    const onSubmit = async (data: any) => {
+    const onSubmit = async (data: UniformExeptionFormProps) => {
         // If not under 18, ensure contactName is set to playerName
         // TODO: Show spinner here if needed
         setShowSpinner(true);
