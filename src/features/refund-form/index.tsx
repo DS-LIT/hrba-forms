@@ -195,7 +195,7 @@ const ReimbursementForm = () => {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="form-container">
-                <Box sx={{ display: "flex", flexDirection: "row", gap: 2 }}>
+                <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
                     {/* First Name Field */}
                     <Controller
                         name="firstName"
